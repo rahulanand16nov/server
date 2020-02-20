@@ -30,7 +30,7 @@ alter user foo;
 
 --echo # Grant super privilege to the user.
 connection default;
-grant super on *.* to foo;
+grant READ_ONLY ADMIN on *.* to foo;
 
 --echo # We now have super privilege. We should be able to run alter user.
 connect (b, localhost, foo);

@@ -76,7 +76,6 @@
 #include "lock.h"
 #include "sql_base.h"                       // close_tables_for_reopen
 #include "sql_parse.h"                     // is_log_table_write_query
-#include "sql_acl.h"                       // SUPER_ACL
 #include "sql_handler.h"
 #include <hash.h>
 #include "wsrep_mysqld.h"
@@ -114,7 +113,7 @@ lock_tables_check(THD *thd, TABLE **tables, uint count, uint flags)
   DBUG_ENTER("lock_tables_check");
 
   system_count= 0;
-  is_superuser= (thd->security_ctx->master_access & SUPER_ACL) != NO_ACL;
+  is_superuser= (thd->security_ctx->master_access & IGNORE_READ_ONLY_ACL) != NO_ACL;
   log_table_write_query= (is_log_table_write_query(thd->lex->sql_command)
                          || ((flags & MYSQL_LOCK_LOG_TABLE) != 0));
 
