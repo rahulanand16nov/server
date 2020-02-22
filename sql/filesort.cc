@@ -1365,6 +1365,7 @@ static uint make_sortkey(Sort_param *param, uchar *to, uchar *ref_pos)
   if (using_packed_sortkeys)
   {
     length= static_cast<int>(to - orig_to);
+    DBUG_ASSERT(length <= param->sort_length);
     Sort_keys::store_sortkey_length(orig_to, length);
     to= orig_to+length;
   }
@@ -1729,8 +1730,13 @@ ulong read_to_buffer(IO_CACHE *fromfile, Merge_chunk *buffpek,
         uint size_of_addon_length= param->using_packed_addons()  ?
                                    Addon_fields::size_of_length_field : 0;
 
+        uint size_of_sort_length= param->using_packed_sortkeys() ?
+                                  Sort_keys::size_of_length_field : 0;
+
         for (; ix < count; ++ix)
         {
+          if (record + size_of_sort_length > buffpek->buffer_end())
+            break;
           uint sort_length=  param->using_packed_sortkeys() ?
                              Sort_keys::read_sortkey_length(record) :
                              param->sort_length;
