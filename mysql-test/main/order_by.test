@@ -9,6 +9,7 @@ drop table if exists t1,t2,t3;
 --enable_warnings
 
 call mtr.add_suppression("Out of sort memory; increase server sort buffer size");
+--source include/have_sequence.inc
 
 #
 # Test old ORDER BY bug
@@ -2310,5 +2311,19 @@ set sort_buffer_size=524*15;
 select c from t1 order by a,b;
 
 set sql_mode= @save_sql_mode;
+drop table t1;
+
+--echo #
+--echo # MDEV-21580: Allow packed sort keys in sort buffer
+--echo #
+
+--echo #
+--echo # This example should not pack sort keys
+--echo # all fields are fixed-size fields in the ORDER BY clause
+--echo #
+
+create table t1 (a bigint, b bigint, c bigint);
+insert into t1 select seq, seq, seq  from seq_1_to_100;
+select * from t1 order by a,b,c;
 
 drop table t1;

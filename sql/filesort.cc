@@ -2541,6 +2541,12 @@ void Sort_param::try_to_pack_sortkeys()
 
   uint size_of_packable_fields= sort_keys->get_size_of_packable_fields();
 
+  /*
+    Disable packing when all fields are fixed-size fields.
+  */
+  if (size_of_packable_fields == 0)
+    return;
+
   const uint sz= Sort_keys::size_of_length_field;
   uint sort_len= sort_keys->get_sort_length();
 
