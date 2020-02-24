@@ -10521,11 +10521,11 @@ bool MYSQL_BIN_LOG::recover_explicit_xa_prepare(const char *log_name,
                                                 HASH *recover_xids)
 {
   bool err= false;
+#ifdef HAVE_REPLICATION
   int error=0;
   Relay_log_info *rli;
   rpl_group_info *rgi;
   THD *thd;
-#ifdef HAVE_REPLICATION
   thd= new THD(next_thread_id());  /* Needed by start_slave_threads */
   thd->thread_stack= (char*) &thd;
   thd->store_globals();
