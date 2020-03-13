@@ -365,7 +365,7 @@ static int threadpool_process_request(THD *thd)
     thd->net.reading_or_writing= 0;
     if (mysql_audit_release_required(thd))
       mysql_audit_release(thd);
-
+      //i.e if it is not equal to success (0)
     if ((retval= do_command(thd)) != 0)
       goto end;
 

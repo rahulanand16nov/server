@@ -3407,7 +3407,9 @@ bool st_select_lex::add_gorder_to_list(THD *thd, Item *item, bool asc)
 
 
 bool st_select_lex::add_item_to_list(THD *thd, Item *item)
-{
+{ // sql_list.h line 504; item_list is defined in sql_lex.h line 1127 in class st_select_lex
+// It can access because scope of this function st_select_lex.
+// push_back is defined in sql_list.h line 504
   DBUG_ENTER("st_select_lex::add_item_to_list");
   DBUG_PRINT("info", ("Item: %p", item));
   DBUG_RETURN(item_list.push_back(item, thd->mem_root));

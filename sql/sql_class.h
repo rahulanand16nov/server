@@ -6292,6 +6292,7 @@ public:
     else
       db= *db_arg;
   }
+  //GSOC: table_ident group create and object of this class using this constructor
   inline Table_ident(const LEX_CSTRING *table_arg)
     :table(*table_arg), sel((SELECT_LEX_UNIT *)0)
   {
@@ -6725,7 +6726,7 @@ inline bool add_item_to_list(THD *thd, Item *item)
 }
 
 inline bool add_value_to_list(THD *thd, Item *value)
-{
+{ //value_list in sql_lex.h line 3231; push_back in sql_list.h line 504
   return thd->lex->value_list.push_back(value, thd->mem_root);
 }
 

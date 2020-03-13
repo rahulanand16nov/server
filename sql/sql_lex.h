@@ -606,7 +606,7 @@ public:
    unit is container of either
      - One SELECT
      - UNION of selects
-   select_lex and unit are both inherited form st_select_lex_node
+   select_lex and unit are both inheriting from st_select_lex_node
    neighbors are two select_lex or units on the same level
 
    All select describing structures linked with following pointers:
@@ -1113,7 +1113,7 @@ public:
   LEX *parent_lex;
   enum olap_type olap;
   /* FROM clause - points to the beginning of the TABLE_LIST::next_local list. */
-  SQL_I_List<TABLE_LIST>  table_list;
+  SQL_I_List<TABLE_LIST>  table_list; // TABLE_LIST-> table.h line 1979
 
   /*
     GROUP BY clause.

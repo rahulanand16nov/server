@@ -8466,11 +8466,11 @@ select:
           {
             Lex->pop_select();
             $1->set_with_clause(NULL);
-            if (Lex->select_finalize($1, $3))
+            if (Lex->select_finalize($1, $3)) // select_finalize sets sql_command=SQLCOM_SELECT
               MYSQL_YYABORT;
           }
         | with_clause query_expression_no_with_clause
-          {
+          {// This is where with clause and select statement is matched
             if (Lex->push_select($2->fake_select_lex ?
                                  $2->fake_select_lex :
                                  $2->first_select()))
@@ -8544,8 +8544,8 @@ query_specification_start:
           SELECT_SYM
           {
             SELECT_LEX *sel;
-            LEX *lex= Lex;
-            if (!(sel= lex->alloc_select(TRUE)) || lex->push_select(sel))
+            LEX *lex= Lex; // SELECT_LEX *LEX::alloc_select(bool select); alloc_select line 5829 sql_lex.cc;
+            if (!(sel= lex->alloc_select(TRUE)) || lex->push_select(sel))// sql_lex.h line 3651
               MYSQL_YYABORT;
             sel->init_select();
             sel->braces= FALSE;
@@ -13001,13 +13001,14 @@ opt_insert_update:
 	    Select->parsing_place= NO_MATTER;
           }
         ;
-
+//GSOC: UPDATE [TABLE NAMES] are matched here
 update_table_list:
           table_ident opt_use_partition for_portion_of_time_clause
           opt_table_alias_clause opt_key_definition
           {
             SELECT_LEX *sel= Select;
             sel->table_join_options= 0;
+            //GSOC: sql_parse.cc line 8056 has the definition of add_table_to_list
             if (!($$= Select->add_table_to_list(thd, $1, $4,
                                                 Select->get_table_join_options(),
                                                 YYPS->m_lock_type,
@@ -13026,9 +13027,9 @@ update:
           UPDATE_SYM
           {
             LEX *lex= Lex;
-            if (Lex->main_select_push())
+            if (Lex->main_select_push()) //sql_lex.cc
               MYSQL_YYABORT;
-            mysql_init_select(lex);
+            mysql_init_select(lex); //calls lex->init_select() sql_lex.h line 4501;
             lex->sql_command= SQLCOM_UPDATE;
             lex->duplicates= DUP_ERROR; 
           }
@@ -13067,6 +13068,7 @@ update_list:
 update_elem:
           simple_ident_nospvar equal expr_or_default
           {
+            //Check sql_lex.cc for add_item and sql_class.h for add_value
             if (unlikely(add_item_to_list(thd, $1)) ||
                 unlikely(add_value_to_list(thd, $3)))
               MYSQL_YYABORT;
@@ -14701,12 +14703,26 @@ with_clause:
           WITH opt_recursive
           {
              LEX *lex= Lex;
+             // $2 returns 1 if REFERENCE token is used otherwise 0
+             // Check sql_lex.h line 3149 for curr_with_clause.
+             // Check sql_cte.h for With_clause definition.
              With_clause *with_clause=
              new With_clause($2, Lex->curr_with_clause);
+             // checks if object with_clause formed or not if not ABORT
              if (unlikely(with_clause == NULL))
                MYSQL_YYABORT;
+             // DERIVED_WITH has value 4 and | is bitwise or operator [sql_lex.h line 413]
+             // | is used because it can be combination of derived tables
              lex->derived_tables|= DERIVED_WITH;
              lex->curr_with_clause= with_clause;
+             /*
+             Add this with clause to the list of with clauses used in the statement
+             void add_to_list(With_clause ** &last_next)
+              {
+                *last_next= this;
+                last_next= &this->next_with_clause;
+              }
+             */
              with_clause->add_to_list(Lex->with_clauses_list_last_next);
              if (lex->current_select &&
                  lex->current_select->parsing_place == BEFORE_OPT_LIST)
@@ -14737,10 +14753,11 @@ with_list_element:
 	  opt_with_column_list 
           AS '(' query_expression ')'
  	  {
-            LEX *lex= thd->lex;
+            LEX *lex= thd->lex; //m_tmp_query is the temporary pointer to sub query string
             const char *query_start= lex->sphead ? lex->sphead->m_tmp_query
                                                  : thd->query();
             const char *spec_start= $4.pos() + 1;
+            // sql_cte.h line 36
             With_element *elem= new With_element($1, *$2, $5);
 	    if (elem == NULL || Lex->curr_with_clause->add_with_element(elem))
 	      MYSQL_YYABORT;
@@ -14872,7 +14889,7 @@ simple_ident:
 
 simple_ident_nospvar:
           ident
-          {
+          { // create_item_ident_nosp has Item* return type
             if (unlikely(!($$= Lex->create_item_ident_nosp(thd, &$1))))
               MYSQL_YYABORT;
           }
@@ -14926,6 +14943,7 @@ field_ident:
 table_ident:
           ident
           {
+          //GSOC: Table name is being set here. Why is typecasting used here?
             $$= new (thd->mem_root) Table_ident(&$1);
             if (unlikely($$ == NULL))
               MYSQL_YYABORT;

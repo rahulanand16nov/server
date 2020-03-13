@@ -1148,7 +1148,7 @@ static enum enum_server_command fetch_command(THD *thd, char *packet)
   enum enum_server_command
     command= (enum enum_server_command) (uchar) packet[0];
   DBUG_ENTER("fetch_command");
-
+  // if command >= 255 (COM_END) you can check mysql_com.h in include folder line 106
   if (command >= COM_END ||
       (command >= COM_MDB_GAP_BEG && command <= COM_MDB_GAP_END))
     command= COM_END;				// Wrong command
@@ -8038,7 +8038,7 @@ bool add_to_list(THD *thd, SQL_I_List<ORDER> &list, Item *item,bool asc)
 
   @param table		Table to add
   @param alias		alias for table (or null if no alias)
-  @param table_options	A set of the following bits:
+  @param table_options	A set of the following bits: (values defined in sql_lex.h)
                          - TL_OPTION_UPDATING : Table will be updated
                          - TL_OPTION_FORCE_INDEX : Force usage of index
                          - TL_OPTION_ALIAS : an alias in multi table DELETE
