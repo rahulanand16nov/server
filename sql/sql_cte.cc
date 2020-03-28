@@ -46,7 +46,7 @@ bool With_clause::add_with_element(With_element *elem)
   {
     my_error(ER_TOO_MANY_DEFINITIONS_IN_WITH_CLAUSE, MYF(0));
     return true;
-  }
+  } /* spec: The query that specifies the table introduced by this with element */
   elem->owner= this;
   elem->number= with_list.elements;
   elem->spec->with_element= elem;
@@ -211,9 +211,9 @@ struct st_unit_ctxt_elem
 
 bool With_element::check_dependencies_in_spec()
 { 
-  for (st_select_lex *sl=  spec->first_select(); sl; sl= sl->next_select())
-  {
-    st_unit_ctxt_elem ctxt0= {NULL, owner->owner};
+  for (st_select_lex *sl=  spec->first_select(); sl; sl= sl->next_select()) // WITH cte AS ([this query is spec]) I think
+  { // GSOC: With_element:: With_clause *owner; & With_clause:: st_select_lex_unit *owner; // the unit this with clause attached to
+    st_unit_ctxt_elem ctxt0= {NULL, owner->owner}; // here is the problem when adding update. If after with clause there is no SELECT owner unit is NULL
     st_unit_ctxt_elem ctxt1= {&ctxt0, spec};
     check_dependencies_in_select(sl, &ctxt1, false, &sl->with_dep);
     base_dep_map|= sl->with_dep;
@@ -294,7 +294,7 @@ With_element *find_table_def_in_with_clauses(TABLE_LIST *tbl,
       return tbl->with;
     barrier= NULL;
     if (unit->with_element && !unit->with_element->get_owner()->with_recursive)
-    {
+    { // why are we doing this?
       /* 
         This unit is the specification if the with element unit->with_element.
         The with element belongs to a with clause without the specifier RECURSIVE.
@@ -334,11 +334,11 @@ void With_element::check_dependencies_in_select(st_select_lex *sl,
                                                 bool in_subq,
                                                 table_map *dep_map)
 {
-  With_clause *with_clause= sl->get_with_clause();
+  With_clause *with_clause= sl->get_with_clause(); // master->with_clause;
   for (TABLE_LIST *tbl= sl->table_list.first; tbl; tbl= tbl->next_local)
-  {
+  {// With_element *with;          /* With element defining this table (if any) */
     if (tbl->derived || tbl->nested_join)
-      continue;
+      continue; // table is derived that means it cannot be a query name of a cte.
     tbl->with_internal_reference_map= 0;
     /*
       If there is a with clause attached to the unit containing sl
@@ -348,10 +348,10 @@ void With_element::check_dependencies_in_select(st_select_lex *sl,
       If the definition of tbl is found somewhere in with clauses
        then tbl->with is set to point to this definition 
     */
-    if (with_clause && !tbl->with)
+    if (with_clause && !tbl->with) // checking nested with?
       tbl->with= with_clause->find_table_def(tbl, NULL);
     if (!tbl->with)
-      tbl->with= find_table_def_in_with_clauses(tbl, ctxt);
+      tbl->with= find_table_def_in_with_clauses(tbl, ctxt); // THis is called for example given in jira.
 
     if (tbl->with && tbl->with->owner== this->owner)
     {   
@@ -1106,7 +1106,7 @@ With_element *st_select_lex::find_table_def_in_with_clauses(TABLE_LIST *table)
 
 bool TABLE_LIST::set_as_with_table(THD *thd, With_element *with_elem)
 {
-  if (table)
+  if (table) // opened table;
   {
     /*
       This table was prematurely identified as a temporary table.
@@ -1120,9 +1120,9 @@ bool TABLE_LIST::set_as_with_table(THD *thd, With_element *with_elem)
   with= with_elem;
   schema_table= NULL;
   if (!with_elem->is_referenced() || with_elem->is_recursive)
-  {
+  { // GSOC: IMPORTANT!!
     derived= with_elem->spec;
-    if (derived != select_lex->master_unit() &&
+    if (derived != select_lex->master_unit() && // select_lex: /* link to select_lex where this table was used */;
         !is_with_table_recursive_reference())
     {
        derived->move_as_slave(select_lex);
@@ -1157,8 +1157,8 @@ bool TABLE_LIST::is_with_table_recursive_reference()
   return (with_internal_reference_map &&
           (with->get_mutually_recursive() & with_internal_reference_map));
 }
-
-
+// get_mutially_recursive returns table_map mutually_recursive; /* Dependency map of with elements mutually recursive with this with element */
+// with_internal_reference_map:   /* Bitmap of the defining with element */
 /* 
   Specifications of with tables with recursive table references
   in non-mergeable derived tables are not allowed in this

@@ -6292,13 +6292,13 @@ public:
     else
       db= *db_arg;
   }
-  //GSOC: table_ident group create and object of this class using this constructor
+  //GSOC: table_ident: create and object of this class using this constructor
   inline Table_ident(const LEX_CSTRING *table_arg)
     :table(*table_arg), sel((SELECT_LEX_UNIT *)0)
   {
     db= null_clex_str;
   }
-  /*
+  /* GSOC: IMPORTANT! ALSO CHECK yacc line 11640
     This constructor is used only for the case when we create a derived
     table. A derived table has no name and doesn't belong to any database.
     Later, if there was an alias specified for the table, it will be set

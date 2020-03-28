@@ -8479,7 +8479,7 @@ select:
           opt_procedure_or_into
           {
             Lex->pop_select();
-            $2->set_with_clause($1);
+            $2->set_with_clause($1); // also sets the owner of with clause($2)
             $1->attach_to($2->first_select());
             if (Lex->select_finalize($2, $4))
               MYSQL_YYABORT;
@@ -8547,7 +8547,7 @@ query_specification_start:
             LEX *lex= Lex; // SELECT_LEX *LEX::alloc_select(bool select); alloc_select line 5829 sql_lex.cc;
             if (!(sel= lex->alloc_select(TRUE)) || lex->push_select(sel))// sql_lex.h line 3651
               MYSQL_YYABORT;
-            sel->init_select();
+            sel->init_select(); // sql_lex.cc line 2948
             sel->braces= FALSE;
           }
           select_options
@@ -11620,7 +11620,7 @@ table_primary_ident:
           opt_table_alias_clause opt_key_definition
           {
             SELECT_LEX *sel= Select;
-            sel->table_join_options= 0;
+            sel->table_join_options= 0; // defined in  sql_parse.cc
             if (!($$= Select->add_table_to_list(thd, $1, $4,
                                                 Select->get_table_join_options(),
                                                 YYPS->m_lock_type,
@@ -13001,7 +13001,7 @@ opt_insert_update:
 	    Select->parsing_place= NO_MATTER;
           }
         ;
-//GSOC: UPDATE [TABLE NAMES] are matched here
+//GSOC: UPDATE [TABLE NAMES] are matched here; When there are two tables join_table_list is choosen
 update_table_list:
           table_ident opt_use_partition for_portion_of_time_clause
           opt_table_alias_clause opt_key_definition
@@ -13022,21 +13022,34 @@ update_table_list:
         ;
 
 /* Update rows in a table */
+/*
+st_select_lex* st_select_lex_unit::first_select()
+  {
+    return reinterpret_cast<st_select_lex*>(slave);
+  }
 
+struct LEX: public Query_tables_list
+{
+  SELECT_LEX_UNIT unit;                         // most upper unit  
+  inline SELECT_LEX *first_select_lex() {return unit.first_select();}
+
+private:
+  SELECT_LEX builtin_select;
+*/
 update:
           UPDATE_SYM
           {
             LEX *lex= Lex;
             if (Lex->main_select_push()) //sql_lex.cc
               MYSQL_YYABORT;
-            mysql_init_select(lex); //calls lex->init_select() sql_lex.h line 4501;
+            mysql_init_select(lex); //calls current_select->init_select()
             lex->sql_command= SQLCOM_UPDATE;
             lex->duplicates= DUP_ERROR; 
           }
           opt_low_priority opt_ignore update_table_list
           SET update_list
           {
-            SELECT_LEX *slex= Lex->first_select_lex();
+            SELECT_LEX *slex= Lex->first_select_lex(); // LOOK ABOVE; seems to be pointer to builtin_select;
             if (slex->table_list.elements > 1)
               Lex->sql_command= SQLCOM_UPDATE_MULTI;
             else if (slex->get_table_list()->derived)
@@ -13058,6 +13071,37 @@ update:
             if ($10)
               Select->order_list= *($10);
           } stmt_end {}
+        | with_clause UPDATE_SYM
+          {
+            LEX *lex= Lex;
+            //SELECT_LEX *sel;
+            /*if (!(sel= lex->alloc_select(TRUE)) || lex->push_select(sel))
+              MYSQL_YYABORT; */
+            if (Lex->main_select_push())
+              MYSQL_YYABORT;
+            mysql_init_select(lex);
+            lex->sql_command= SQLCOM_UPDATE;
+            lex->duplicates= DUP_ERROR; 
+          }
+          opt_low_priority opt_ignore update_table_list
+          SET update_list
+          {
+            SELECT_LEX *slex= Lex->current_select;
+            if (slex->table_list.elements > 1)
+              Lex->sql_command= SQLCOM_UPDATE_MULTI;
+            else if (slex->get_table_list()->derived)
+            {
+              my_error(ER_NON_UPDATABLE_TABLE, MYF(0),
+                       slex->get_table_list()->alias.str, "UPDATE");
+              MYSQL_YYABORT;
+            }
+            slex->set_lock_for_tables($4, slex->table_list.elements == 1);
+            st_select_lex_unit *unit= Lex->current_select->master_unit();
+            //if (!(unit= Lex->create_unit(Lex->current_select)))
+            //  MYSQL_YYABORT;
+            unit->set_with_clause($1);
+            $1->attach_to(unit->first_select());
+          } opt_where_clause stmt_end {} // need to add order and other stuff
         ;
 
 update_list:
@@ -14703,7 +14747,7 @@ with_clause:
           WITH opt_recursive
           {
              LEX *lex= Lex;
-             // $2 returns 1 if REFERENCE token is used otherwise 0
+             // $2 returns 1 if RECURSIVE token is used otherwise 0
              // Check sql_lex.h line 3149 for curr_with_clause.
              // Check sql_cte.h for With_clause definition.
              With_clause *with_clause=
@@ -14712,7 +14756,11 @@ with_clause:
              if (unlikely(with_clause == NULL))
                MYSQL_YYABORT;
              // DERIVED_WITH has value 4 and | is bitwise or operator [sql_lex.h line 413]
-             // | is used because it can be combination of derived tables
+             /*
+              A flag that indicates what kinds of derived tables are present in the
+              query (0 if no derived tables, otherwise a combination of flags
+              DERIVED_SUBQUERY and DERIVED_VIEW).
+            */
              lex->derived_tables|= DERIVED_WITH;
              lex->curr_with_clause= with_clause;
              /*
@@ -14757,7 +14805,7 @@ with_list_element:
             const char *query_start= lex->sphead ? lex->sphead->m_tmp_query
                                                  : thd->query();
             const char *spec_start= $4.pos() + 1;
-            // sql_cte.h line 36
+            // add_with_element(...) is at sql_cte.cc line 43
             With_element *elem= new With_element($1, *$2, $5);
 	    if (elem == NULL || Lex->curr_with_clause->add_with_element(elem))
 	      MYSQL_YYABORT;
@@ -14943,7 +14991,6 @@ field_ident:
 table_ident:
           ident
           {
-          //GSOC: Table name is being set here. Why is typecasting used here?
             $$= new (thd->mem_root) Table_ident(&$1);
             if (unlikely($$ == NULL))
               MYSQL_YYABORT;

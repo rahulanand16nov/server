@@ -2504,7 +2504,7 @@ bool THD::to_ident_sys_alloc(Lex_ident_sys_st *to, const Lex_ident_cli_st *ident
            to->copy_sys(this, &unquoted) :
            to->convert(this, &unquoted, charset());
   }
-  return charset_is_system_charset ?
+  return charset_is_system_charset ? //is set if a statement accesses a temporary table created through CREATE TEMPORARY TABLE. 
          to->copy_sys(this, ident) :
          to->copy_or_convert(this, ident, charset());
 }

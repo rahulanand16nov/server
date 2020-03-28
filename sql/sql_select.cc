@@ -397,13 +397,13 @@ bool handle_select(THD *thd, LEX *lex, select_result *result,
                    ulong setup_tables_done_option)
 {
   bool res;
-  SELECT_LEX *select_lex= lex->first_select_lex();
+  SELECT_LEX *select_lex= lex->first_select_lex(); // looks like builtin_select
   DBUG_ENTER("handle_select");
   MYSQL_SELECT_START(thd->query());
 
   if (select_lex->master_unit()->is_unit_op() ||
       select_lex->master_unit()->fake_select_lex)
-    res= mysql_union(thd, lex, result, &lex->unit, setup_tables_done_option);
+    res= mysql_union(thd, lex, result, &lex->unit, setup_tables_done_option); // Simple cte query does not go here
   else
   {
     SELECT_LEX_UNIT *unit= &lex->unit;
@@ -1136,7 +1136,7 @@ JOIN::prepare(TABLE_LIST *tables_init, COND *conds_init, uint og_num,
   // simple check that we got usable conds
   dbug_print_item(conds);
 
-  if (select_lex->handle_derived(thd->lex, DT_PREPARE))
+  if (select_lex->handle_derived(thd->lex, DT_PREPARE)) //return lex->handle_list_of_derived(table_list.first, phases);
     DBUG_RETURN(-1);
 
   thd->lex->current_select->context_analysis_place= NO_MATTER;
@@ -4578,7 +4578,7 @@ mysql_select(THD *thd, TABLE_LIST *tables, List<Item> &fields, COND *conds,
 
   select_lex->context.resolve_in_select_list= TRUE;
   JOIN *join;
-  if (select_lex->join != 0)
+  if (select_lex->join != 0) //if it is non-null; for simple cte it is null;
   {
     join= select_lex->join;
     /*
@@ -4611,12 +4611,12 @@ mysql_select(THD *thd, TABLE_LIST *tables, List<Item> &fields, COND *conds,
     join->select_options= select_options;
   }
   else
-  {
+  { //GSOC: HERE
     /*
       When in EXPLAIN, delay deleting the joins so that they are still
       available when we're producing EXPLAIN EXTENDED warning text.
     */
-    if (select_options & SELECT_DESCRIBE)
+    if (select_options & SELECT_DESCRIBE) // SELECT_DESCRIBE = 4
       free_join= 0;
 
     if (!(join= new (thd->mem_root) JOIN(thd, fields, select_options, result)))

@@ -3607,7 +3607,7 @@ bool extend_table_list(THD *thd, TABLE_LIST *tables,
   @retval  TRUE   Error, reported unless there is a chance to recover from it.
 */
 
-static bool
+static bool // IMPORTANT FOR GSOC!
 open_and_process_table(THD *thd, TABLE_LIST *tables, uint *counter, uint flags,
                        Prelocking_strategy *prelocking_strategy,
                        bool has_prelocking_list, Open_table_context *ot_ctx)
@@ -3637,7 +3637,7 @@ open_and_process_table(THD *thd, TABLE_LIST *tables, uint *counter, uint flags,
     tables->db= tables->view_db;
     tables->table_name= tables->view_name;
   }
-  else if (tables->select_lex) 
+  else if (tables->select_lex) // GSOC: /* link to select_lex where this table was used */
   {
     /*
       Check whether 'tables' refers to a table defined in a with clause.
@@ -3651,9 +3651,9 @@ open_and_process_table(THD *thd, TABLE_LIST *tables, uint *counter, uint flags,
     */
     if (tables->with)
     {
-      if (tables->is_recursive_with_table() &&
+      if (tables->is_recursive_with_table() && // checking if recursion is used
           !tables->is_with_table_recursive_reference())
-      {
+      {// check for recusive stage
         tables->with->rec_outer_references++;
         With_element *with_elem= tables->with;
         while ((with_elem= with_elem->get_next_mutually_recursive()) !=
@@ -3728,7 +3728,7 @@ open_and_process_table(THD *thd, TABLE_LIST *tables, uint *counter, uint flags,
 
   /*
     Not a placeholder: must be a base/temporary table or a view. Let us open it.
-  */
+  */ //GSOC: NOT USED
   if (tables->table)
   {
     /*
@@ -4274,7 +4274,7 @@ restart:
       }
     }
     else
-    {
+    {// GSOC: go here;
       TABLE_LIST *table;
       if (lock_table_names(thd, options, *start,
                            thd->lex->first_not_own_table(),
@@ -4310,7 +4310,7 @@ restart:
                                     prelocking_strategy, has_prelocking_list,
                                     &ot_ctx);
 
-      if (unlikely(error))
+      if (unlikely(error)) //unlikely(false)=false;
       {
         if (ot_ctx.can_recover_from_failed_open())
         {

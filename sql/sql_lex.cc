@@ -9466,8 +9466,8 @@ void st_select_lex::add_statistics(SELECT_LEX_UNIT *unit)
 bool LEX::main_select_push()
 {
   DBUG_ENTER("LEX::main_select_push");
-  current_select_number= 1;
-  builtin_select.select_number= 1;
+  current_select_number++;
+  builtin_select.select_number= current_select_number;
   if (push_select(&builtin_select))
     DBUG_RETURN(TRUE);
   DBUG_RETURN(FALSE);

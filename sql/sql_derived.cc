@@ -76,11 +76,11 @@ mysql_handle_derived(LEX *lex, uint phases)
   THD *thd= lex->thd;
   DBUG_ENTER("mysql_handle_derived");
   DBUG_PRINT("enter", ("phases: 0x%x", phases));
-  if (!lex->derived_tables)
+  if (!lex->derived_tables) //derived_tables = 4 (DERIVED_WITH)
     DBUG_RETURN(FALSE);
 
   lex->thd->derived_tables_processing= TRUE;
-
+  // DT_PHASES is 8U; DT_INIT is 1U
   for (uint phase= 0; phase < DT_PHASES && !res; phase++)
   {
     uint phase_flag= DT_INIT << phase;
@@ -93,9 +93,9 @@ mysql_handle_derived(LEX *lex, uint phases)
 
     for (SELECT_LEX *sl= lex->all_selects_list;
 	 sl && !res;
-	 sl= sl->next_select_in_list())
+	 sl= sl->next_select_in_list()) // link_next;
     {
-      TABLE_LIST *cursor= sl->get_table_list();
+      TABLE_LIST *cursor= sl->get_table_list(); // returns table_list.first;
       sl->changed_elements|= TOUCHED_SEL_DERIVED;
       /*
         DT_MERGE_FOR_INSERT is not needed for views/derived tables inside

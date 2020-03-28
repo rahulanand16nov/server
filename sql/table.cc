@@ -8881,7 +8881,7 @@ bool TABLE_LIST::handle_derived(LEX *lex, uint phases)
     if (!is_with_table_recursive_reference())
     {
       for (SELECT_LEX *sl= unit->first_select(); sl; sl= sl->next_select())
-        if (sl->handle_derived(lex, phases))
+        if (sl->handle_derived(lex, phases)) // return lex->handle_list_of_derived(table_list.first, phases);
           DBUG_RETURN(TRUE);
     }
     if (mysql_handle_single_derived(lex, this, phases))
@@ -8968,7 +8968,7 @@ void TABLE_LIST::wrap_into_nested_join(List<TABLE_LIST> &join_list)
 
 bool TABLE_LIST::init_derived(THD *thd, bool init_view)
 {
-  SELECT_LEX *first_select= get_single_select();
+  SELECT_LEX *first_select= get_single_select(); //get_unit()->first_select();
   SELECT_LEX_UNIT *unit= get_unit();
 
   if (!unit)
