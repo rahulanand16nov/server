@@ -1,4 +1,5 @@
 --source include/default_optimizer_switch.inc
+--source include/have_innodb.inc
 
 create table t1 (a int, b  varchar(32));
 insert into t1 values
@@ -1333,27 +1334,47 @@ set sql_mode= @save_sql_mode;
 --echo # End of 10.4 tests
 
 --echo # Using CTE with UPDATE
-create table t1 (a int, b int);
+create table t1 (a int, b int) engine=innodb;
 insert into t1 values(1,2),(3,4);
 create table t2 select * from t1;
 set autocommit=0;
 
 --error ER_NON_UPDATABLE_TABLE
 with t as (select a, b from t1) update t1, t set t.a=t.a+10;
-explain
-with t as (select a+2 as a, b from t1) update t1, t set t1.a=t.a+10 where t1.a-t.a=0;
-with t as (select a+2 as a, b from t1) update t1, t set t1.a=t.a+10 where t1.a-t.a=0;
+let $q= with t as (select a+2 as a, b from t1) update t1, t set t1.a=t.a+10 where t1.a=t.a;
+eval explain $q;
+eval $q;
 select * from t1;
 rollback;
-explain
-with t as (select a+2 as a, b from t2) update t1, t set t1.a=t.a+10 where t1.a-t.a=0;
-with t as (select a+2 as a, b from t2) update t1, t set t1.a=t.a+10 where t1.a-t.a=0;
+let $q= with t as (select a+2 as a, b from t2) update t1, t set t1.a=t.a+10 where t1.a=t.a;
+eval explain $q;
+eval $q;
 select * from t1;
 rollback;
 
 --echo # Multiple references to same cte
 let $q= with cte as (select a+2 as a, b from t2)
-update t1, cte, cte as cte2 set t1.a=cte.a+10 where t1.a-cte.a=0 and cte.b=cte2.b;
+update t1, cte, cte as cte2 set t1.a=cte.a+10 where t1.a=cte.a and cte.b=cte2.b;
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+
+--echo # With manual substitution of CTE specification
+--error ER_NON_UPDATABLE_TABLE
+update t1, (select a,b from t1) as t set t.a=t.a+10;
+let $q= update t1, (select a+2 as a, b from t1) as t set t1.a=t.a+10 where t1.a=t.a;
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+let $q= update t1, (select a+2 as a,b from t2) as t set t1.a=t.a+10 where t1.a=t.a;
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+let $q= update t1, (select a+2 as a, b from t2) as c1, (select a+2 as a, b from t2)
+as c2 set t1.a=c1.a+10 where t1.a=c1.a and c1.b=c2.b;
 eval explain $q;
 eval $q;
 select * from t1;
