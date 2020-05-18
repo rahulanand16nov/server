@@ -1351,6 +1351,13 @@ eval explain $q;
 eval $q;
 select * from t1;
 rollback;
+--echo # Single-table syntax
+let $q= with t as (select a+2 as a, b from t2) update t1
+set t1.a=(select t.a+10 from t where t1.a-t.a=0 limit 1);
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
 
 --echo # Multiple references to same cte
 let $q= with cte as (select a+2 as a, b from t2)
@@ -1379,3 +1386,12 @@ eval explain $q;
 eval $q;
 select * from t1;
 rollback;
+--echo # Single-table syntax
+let $q= update t1 set t1.a=(select t.a+10 from 
+(select a+2 as a, b from t2) as t where t1.a-t.a=0 limit 1);
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+set autocommit=1;
+drop table t1,t2;

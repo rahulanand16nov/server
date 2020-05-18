@@ -226,3 +226,11 @@ create table t2 as select * from t1;
 --source include/analyze-format.inc
 analyze format=json select a, (select t2.b from t2 where t2.a<t1.a order by t2.c limit 1) from t1 where t1.a<0;
 drop table t0,t1,t2;
+create table t1 (a int, b int);
+insert into t1 values(1,2),(3,4);
+create table t2 select * from t1;
+--source include/analyze-format.inc
+analyze with t as (select a+2 as a, b from t1) update t1, t set t1.a=t.a+10 where t1.a=t.a;
+--source include/analyze-format.inc
+analyze format=json with t as (select a+2 as a, b from t2) update t2, t set t2.a=t.a+10 where t2.a=t.a;
+drop table t1, t2;
