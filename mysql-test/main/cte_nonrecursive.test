@@ -1351,9 +1351,26 @@ eval explain $q;
 eval $q;
 select * from t1;
 rollback;
+let $q= with cte As (select a+2 as a, b from t1)
+update t1, cte set t1.a=t1.a+10 where t1.a=(select a from cte limit 1);
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+let $q= with t as (select a+2 as a, sum(b) from t1 group by t1.a) update t1, t set t1.a=t.a+10 where t1.a=t.a;
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
 --echo # Single-table syntax
 let $q= with t as (select a+2 as a, b from t2) update t1
 set t1.a=(select t.a+10 from t where t1.a-t.a=0 limit 1);
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+let $q= update t1 set t1.a=t1.a+10 where t1.a=
+(with cte AS (select a+2 as a,b from t1) select a from cte limit 1);
 eval explain $q;
 eval $q;
 select * from t1;
@@ -1386,9 +1403,14 @@ eval explain $q;
 eval $q;
 select * from t1;
 rollback;
+let $q= update t1, (select a+2 as a, sum(b) from t1 group by t1.a) t set t1.a=t.a+10 where t1.a=t.a;
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
 --echo # Single-table syntax
 let $q= update t1 set t1.a=(select t.a+10 from 
-(select a+2 as a, b from t2) as t where t1.a-t.a=0 limit 1);
+(select a+2 as a, b from t2) as t where t1.a=t.a limit 1);
 eval explain $q;
 eval $q;
 select * from t1;
