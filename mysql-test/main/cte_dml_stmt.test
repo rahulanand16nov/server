@@ -1,0 +1,94 @@
+--source include/have_innodb.inc
+
+--echo # Using CTE with UPDATE
+create table t1 (a int, b int) engine=innodb;
+insert into t1 values(1,2),(3,4);
+create table t2 select * from t1;
+set autocommit=0;
+
+--error ER_NON_UPDATABLE_TABLE
+with t as (select a, b from t1) update t1, t set t.a=t.a+10;
+--error ER_NON_UPDATABLE_TABLE
+update t1, (select a,b from t1) as t set t.a=t.a+10;
+let $q= with t as (select a+2 as a, b from t1) update t1, t set t1.a=t.a+10 where t1.a=t.a;
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+let $q= update t1, (select a+2 as a, b from t1) as t set t1.a=t.a+10 where t1.a=t.a;
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+let $q= with t as (select a+2 as a, b from t2) update t1, t set t1.a=t.a+10 where t1.a=t.a;
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+let $q= update t1, (select a+2 as a,b from t2) as t set t1.a=t.a+10 where t1.a=t.a;
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+let $q= with t as (select a+2 as a, sum(b) from t1 group by t1.a) update t1, t set t1.a=t.a+10 where t1.a=t.a;
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+let $q= update t1, (select a+2 as a, sum(b) from t1 group by t1.a) t set t1.a=t.a+10 where t1.a=t.a;
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+
+--echo # Single-table syntax
+let $q= with t as (select a+2 as a, b from t2) update t1
+set t1.a=(select t.a+10 from t where t1.a=t.a limit 1);
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+let $q= update t1 set t1.a=(select t.a+10 from 
+(select a+2 as a, b from t2) as t where t1.a=t.a limit 1);
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+
+--echo # CTE in subquery of WHERE clause
+let $q= with cte As (select a+2 as a, b from t1)
+update t1, cte set t1.a=t1.a+10 where t1.a=(select a from cte limit 1);
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+let $q= update t1 set t1.a=t1.a+10 where t1.a=
+(with cte AS (select a+2 as a,b from t1) select a from cte limit 1);
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+
+--echo # Multiple references to same cte
+let $q= with cte as (select a+2 as a, b from t2)
+update t1, cte, cte as cte2 set t1.a=cte.a+10 where t1.a=cte.a and cte.b=cte2.b;
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+let $q= update t1, (select a+2 as a, b from t2) as c1, (select a+2 as a, b from t2)
+as c2 set t1.a=c1.a+10 where t1.a=c1.a and c1.b=c2.b;
+eval explain $q;
+eval $q;
+select * from t1;
+rollback;
+
+--echo # Analyze stmt + CTE
+--source include/analyze-format.inc
+analyze with t as (select a+2 as a, b from t1) update t1, t set t1.a=t.a+10 where t1.a=t.a;
+rollback;
+--source include/analyze-format.inc
+analyze format=json with t as (select a+2 as a, b from t1) update t1, t set t1.a=t.a+10 where t1.a=t.a;
+rollback;
+set autocommit=1;
+drop table t1,t2;
