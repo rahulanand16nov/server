@@ -1741,7 +1741,7 @@ End SQL_MODE_ORACLE_SPECIFIC */
         '-' '+' '*' '/' '%' '(' ')'
         ',' '!' '{' '}' '&' '|'
 
-%type <with_clause> with_clause
+%type <with_clause> with_clause opt_with_clause
 
 %type <lex_str_ptr> query_name
 
@@ -13037,19 +13037,19 @@ private:
   SELECT_LEX builtin_select;
 */
 update:
-          UPDATE_SYM
+          opt_with_clause UPDATE_SYM
           {
             LEX *lex= Lex;
-            if (Lex->main_select_push()) //sql_lex.cc
+            if (Lex->main_select_push())
               MYSQL_YYABORT;
-            mysql_init_select(lex); //calls current_select->init_select()
+            mysql_init_select(lex);
             lex->sql_command= SQLCOM_UPDATE;
             lex->duplicates= DUP_ERROR; 
           }
           opt_low_priority opt_ignore update_table_list
           SET update_list
           {
-            SELECT_LEX *slex= Lex->first_select_lex(); // LOOK ABOVE; seems to be pointer to builtin_select;
+            SELECT_LEX *slex= Lex->first_select_lex();
             if (slex->table_list.elements > 1)
               Lex->sql_command= SQLCOM_UPDATE_MULTI;
             else if (slex->get_table_list()->derived)
@@ -13064,44 +13064,19 @@ update:
               be too pessimistic. We will decrease lock level if possible in
               mysql_multi_update().
             */
-            slex->set_lock_for_tables($3, slex->table_list.elements == 1);
+            slex->set_lock_for_tables($4, slex->table_list.elements == 1);
+            if ($1)
+            {
+              st_select_lex_unit *unit= Lex->current_select->master_unit();
+              unit->set_with_clause($1);
+              $1->attach_to(unit->first_select());
+            }
           }
           opt_where_clause opt_order_clause delete_limit_clause
           {
-            if ($10)
-              Select->order_list= *($10);
+            if ($11)
+              Select->order_list= *($11);
           } stmt_end {}
-        | with_clause UPDATE_SYM
-          {
-            LEX *lex= Lex;
-            //SELECT_LEX *sel;
-            /*if (!(sel= lex->alloc_select(TRUE)) || lex->push_select(sel))
-              MYSQL_YYABORT; */
-            if (Lex->main_select_push())
-              MYSQL_YYABORT;
-            mysql_init_select(lex);
-            lex->sql_command= SQLCOM_UPDATE;
-            lex->duplicates= DUP_ERROR; 
-          }
-          opt_low_priority opt_ignore update_table_list
-          SET update_list
-          {
-            SELECT_LEX *slex= Lex->current_select;
-            if (slex->table_list.elements > 1)
-              Lex->sql_command= SQLCOM_UPDATE_MULTI;
-            else if (slex->get_table_list()->derived)
-            {
-              my_error(ER_NON_UPDATABLE_TABLE, MYF(0),
-                       slex->get_table_list()->alias.str, "UPDATE");
-              MYSQL_YYABORT;
-            }
-            slex->set_lock_for_tables($4, slex->table_list.elements == 1);
-            st_select_lex_unit *unit= Lex->current_select->master_unit();
-            //if (!(unit= Lex->create_unit(Lex->current_select)))
-            //  MYSQL_YYABORT;
-            unit->set_with_clause($1);
-            $1->attach_to(unit->first_select());
-          } opt_where_clause stmt_end {} // need to add order and other stuff
         ;
 
 update_list:
@@ -14742,6 +14717,10 @@ temporal_literal:
               MYSQL_YYABORT;
           }
         ;
+
+opt_with_clause:
+    /* empty */ { $$= 0; }
+  | with_clause { $$= $1; }
 
 with_clause:
           WITH opt_recursive
