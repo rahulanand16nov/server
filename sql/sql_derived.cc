@@ -807,7 +807,7 @@ bool mysql_derived_prepare(THD *thd, LEX *lex, TABLE_LIST *derived)
   }
 
   derived->fill_me= FALSE;
-
+//[GSOC] select_result for derived table to pass it from table creation to table filling procedure
   if (!(derived->derived_result= new (thd->mem_root) select_unit(thd)))
     DBUG_RETURN(TRUE); // out of memory
 

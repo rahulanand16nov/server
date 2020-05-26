@@ -8980,7 +8980,7 @@ bool TABLE_LIST::init_derived(THD *thd, bool init_view)
   */
   TABLE_LIST *first_table= (TABLE_LIST *) first_select->table_list.first;
   if (first_select->table_list.elements > 1 ||
-      (first_table && first_table->is_multitable()))
+      (first_table && first_table->is_multitable())) //[GSOC] How? a single table is multitable?
     set_multitable();
 
   if (!unit->derived)

@@ -13888,7 +13888,7 @@ describe:
             Select->parsing_place= NO_MATTER;
             Lex->pop_select(); //main select
           }
-        | describe_command opt_extended_describe
+        | describe_command opt_extended_describe //Explain statement matches here
           { Lex->describe|= DESCRIBE_NORMAL; }
           explainable_command
           {
