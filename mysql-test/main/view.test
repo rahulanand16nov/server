@@ -6207,7 +6207,7 @@ select * from v1;
 select * from t1;
 --error ER_NON_INSERTABLE_TABLE
 insert into v1(s2) values (-300);
---error ER_NON_UPDATABLE_TABLE
+--error ER_NONUPDATEABLE_COLUMN
 update v1 set s2=s2+1;
 
 drop view v1;

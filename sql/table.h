@@ -2680,6 +2680,7 @@ struct TABLE_LIST
   st_select_lex *get_single_select();
   void wrap_into_nested_join(List<TABLE_LIST> &join_list);
   bool init_derived(THD *thd, bool init_view);
+  bool check_updatable_fields(THD *thd);
   int fetch_number_of_rows();
   bool change_refs_to_fields();
 

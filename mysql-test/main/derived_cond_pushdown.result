@@ -10376,30 +10376,18 @@ EXPLAIN
   "query_block": {
     "select_id": 1,
     "table": {
-      "table_name": "<derived3>",
+      "table_name": "t1",
       "access_type": "ALL",
       "rows": 2,
       "filtered": 100,
-      "attached_condition": "t.f2 < 2",
-      "materialized": {
-        "query_block": {
-          "select_id": 3,
-          "table": {
-            "table_name": "t1",
-            "access_type": "ALL",
-            "rows": 2,
-            "filtered": 100,
-            "attached_condition": "t1.f2 < 2"
-          }
-        }
-      }
+      "attached_condition": "t1.f2 < 2"
     },
     "table": {
       "table_name": "t1",
       "access_type": "ALL",
       "rows": 2,
       "filtered": 100,
-      "attached_condition": "t1.f2 = t.f2"
+      "attached_condition": "t1.f2 = t1.f2"
     }
   }
 }

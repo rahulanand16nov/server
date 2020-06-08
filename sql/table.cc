@@ -9112,10 +9112,14 @@ bool TABLE_LIST::init_derived(THD *thd, bool init_view)
     if (!is_materialized_derived() && first_select->is_mergeable() &&
         optimizer_flag(thd, OPTIMIZER_SWITCH_DERIVED_MERGE) &&
         !thd->lex->can_not_use_merged() &&
-        !(thd->lex->sql_command == SQLCOM_UPDATE_MULTI ||
-          thd->lex->sql_command == SQLCOM_DELETE_MULTI) &&
         !is_recursive_with_table())
-      set_merged_derived();
+        {
+          set_merged_derived();
+          if ((thd->lex->sql_command == SQLCOM_UPDATE_MULTI ||
+               thd->lex->sql_command == SQLCOM_DELETE_MULTI) &&
+              check_updatable_fields(thd))
+              return TRUE;
+        }
     else
       set_materialized_derived();
   }
@@ -9141,6 +9145,46 @@ bool TABLE_LIST::init_derived(THD *thd, bool init_view)
       create_field_translation(thd);
   }
 
+  return FALSE;
+}
+
+
+/**
+  @brief
+  Check updatability of derived table fields
+
+  @details
+  If query is trying to update a field which belongs to a merged derived table
+  This functions checks whether we can update it or not by making sure that
+  field is not an alias.
+
+  @return false      allowed
+  @return true       not allowed
+
+*/
+
+bool TABLE_LIST::check_updatable_fields(THD *thd)
+{
+  List<Item> derived_items = get_single_select()->item_list;
+  List<Item> top_items = thd->lex->first_select_lex()->item_list;
+  List_iterator<Item> top_it(top_items);
+  List_iterator<Item> derived_it(derived_items);
+  Item *top_item= NULL;
+  Item *derived_item= NULL;
+  LEX_CSTRING orig_field_name;
+  while ((top_item= top_it++))
+  {
+    while((derived_item= derived_it++))
+    {
+      orig_field_name= ((Item_ident*)derived_item)->get_orig_field_name();
+      if (!strcmp(derived_item->name.str,top_item->name.str) && orig_field_name.str
+          && strcmp(orig_field_name.str,derived_item->name.str))
+          {
+            my_error(ER_NONUPDATEABLE_COLUMN, MYF(0), top_item->name.str);
+            return TRUE;
+          }
+    }
+  }
   return FALSE;
 }
 

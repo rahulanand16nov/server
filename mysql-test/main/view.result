@@ -6520,7 +6520,7 @@ s1
 insert into v1(s2) values (-300);
 ERROR HY000: The target table v1 of the INSERT is not insertable-into
 update v1 set s2=s2+1;
-ERROR HY000: The target table v1 of the UPDATE is not updatable
+ERROR HY000: Column 's2' is not updatable
 drop view v1;
 CREATE VIEW v1 AS SELECT * FROM (SELECT s1 FROM t1 WHERE s1
 < 100) AS x;

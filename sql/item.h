@@ -3292,6 +3292,10 @@ public:
                             const char *db_name,
                             const char *table_name, List_iterator<Item> *it,
                             bool any_privileges);
+  LEX_CSTRING get_orig_field_name()
+  {
+    return orig_field_name;
+  }
 };
 
 
