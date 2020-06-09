@@ -435,6 +435,26 @@ int mysql_update(THD *thd,
 
   table= table_list->table;
 
+  if (table_list->derived && table_list->get_single_select()->is_mergeable() &&
+      !thd->lex->can_not_use_merged())
+  {
+    List_iterator<Item> it(fields);
+    Item *item;
+    Item_field * field;
+    while((item= it++))
+    {
+      if (!(field= (Item_field*) item))
+      {
+        my_error(ER_NONUPDATEABLE_COLUMN, MYF(0), item->name.str);
+        return 1;
+      }
+      else
+      {
+        table_list->updatable= true;
+      }
+    }
+  }
+
   if (!table_list->single_table_updatable())
   {
     my_error(ER_NON_UPDATABLE_TABLE, MYF(0), table_list->alias.str, "UPDATE");
@@ -449,7 +469,7 @@ int mysql_update(THD *thd,
   query_plan.table= table;
 #ifndef NO_EMBEDDED_ACCESS_CHECKS
   /* Force privilege re-checking for views after they have been opened. */
-  want_privilege= (table_list->view ? UPDATE_ACL :
+  want_privilege= (table_list->is_view_or_derived() ? UPDATE_ACL :
                    table_list->grant.want_privilege);
 #endif
   if (mysql_prepare_update(thd, table_list, &conds, order_num, order))

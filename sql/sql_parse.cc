@@ -6842,7 +6842,7 @@ bool check_single_table_access(THD *thd, privilege_t privilege,
   @retval
     1   access denied, error is sent to client
 */
-
+// This function might require changes for single derived table update
 bool check_one_table_access(THD *thd, privilege_t privilege,
                             TABLE_LIST *all_tables)
 {

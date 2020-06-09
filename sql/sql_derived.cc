@@ -589,8 +589,9 @@ bool mysql_derived_init(THD *thd, LEX *lex, TABLE_LIST *derived)
     DBUG_RETURN(FALSE);
 
   bool res= derived->init_derived(thd, TRUE);
-
-  derived->updatable= derived->updatable && derived->is_view();
+  // "If derived is not a view so it can't be updatable" makes no sense
+  // derived->updatable= derived->updatable && derived->is_view();
+     derived->updatable= derived->is_merged_derived(); // other tests will be done later
 
   DBUG_RETURN(res);
 }
