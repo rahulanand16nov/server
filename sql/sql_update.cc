@@ -428,6 +428,8 @@ int mysql_update(THD *thd,
   (void) read_statistics_for_tables_if_needed(thd, table_list);
 
   THD_STAGE_INFO(thd, stage_init_update);
+  if (table_list->is_derived())
+    table_list->merge_underlying_list= table_list->get_single_select()->table_list.first;
   if (table_list->handle_derived(thd->lex, DT_MERGE_FOR_INSERT))
     DBUG_RETURN(1);
   if (table_list->handle_derived(thd->lex, DT_PREPARE))

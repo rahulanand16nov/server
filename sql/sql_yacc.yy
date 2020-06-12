@@ -13108,13 +13108,6 @@ update:
             SELECT_LEX *slex= Lex->first_select_lex();
             if (slex->table_list.elements > 1)
               Lex->sql_command= SQLCOM_UPDATE_MULTI;
-            else if (slex->get_table_list()->derived)
-            {
-              /* it is single table update and it is update of derived table */
-              my_error(ER_NON_UPDATABLE_TABLE, MYF(0),
-                       slex->get_table_list()->alias.str, "UPDATE");
-              MYSQL_YYABORT;
-            }
             /*
               In case of multi-update setting write lock for all tables may
               be too pessimistic. We will decrease lock level if possible in

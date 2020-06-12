@@ -546,12 +546,17 @@ bool mysql_derived_merge_for_insert(THD *thd, LEX *lex, TABLE_LIST *derived)
   {
     if (!derived->single_table_updatable())
       DBUG_RETURN(derived->create_field_translation(thd));
-    if (derived->merge_underlying_list)
+    if (derived->is_view() && derived->merge_underlying_list)
     {
       derived->table= derived->merge_underlying_list->table;
       derived->schema_table= derived->merge_underlying_list->schema_table;
       derived->merged_for_insert= TRUE;
       DBUG_ASSERT(derived->table);
+    }
+    if (derived->is_derived() && derived->merge_underlying_list)
+    {
+      derived->table= derived->merge_underlying_list->table;
+      derived->merged_for_insert= TRUE;
     }
   }
   DBUG_RETURN(FALSE);
@@ -590,7 +595,16 @@ bool mysql_derived_init(THD *thd, LEX *lex, TABLE_LIST *derived)
 
   bool res= derived->init_derived(thd, TRUE);
 
-  derived->updatable= derived->updatable && derived->is_view();
+  if (!derived->is_view())
+  {
+    derived->updatable= derived->is_merged_derived();
+
+    for (TABLE_LIST *tl=derived->next_global; tl; tl= tl->next_local)
+    {
+      if (!(derived->updatable= derived->updatable && tl->updatable))
+        break;
+    }
+  }
 
   DBUG_RETURN(res);
 }
