@@ -3524,7 +3524,15 @@ open_and_process_table(THD *thd, TABLE_LIST *tables, uint *counter, uint flags,
   if (tables->derived)
   {
     if (!tables->view)
+    {
+      for (TABLE_LIST *tbl= tables->next_global; tbl; tbl= tbl->next_local)
+      {
+        tbl->lock_type= tables->lock_type;
+        tbl->mdl_request.set_type(tables->mdl_request.type);
+        tbl->updating= tables->updating;
+      }
       goto end;
+    }
     /*
       We restore view's name and database wiped out by derived tables
       processing and fall back to standard open process in order to

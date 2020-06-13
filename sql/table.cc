@@ -9115,7 +9115,10 @@ bool TABLE_LIST::init_derived(THD *thd, bool init_view)
         !(thd->lex->sql_command == SQLCOM_UPDATE_MULTI ||
           thd->lex->sql_command == SQLCOM_DELETE_MULTI) &&
         !is_recursive_with_table())
-      set_merged_derived();
+      {
+        set_merged_derived();
+        this->merge_underlying_list= first_select->table_list.first;
+      }
     else
       set_materialized_derived();
   }

@@ -546,17 +546,12 @@ bool mysql_derived_merge_for_insert(THD *thd, LEX *lex, TABLE_LIST *derived)
   {
     if (!derived->single_table_updatable())
       DBUG_RETURN(derived->create_field_translation(thd));
-    if (derived->is_view() && derived->merge_underlying_list)
+    if (derived->merge_underlying_list)
     {
       derived->table= derived->merge_underlying_list->table;
       derived->schema_table= derived->merge_underlying_list->schema_table;
       derived->merged_for_insert= TRUE;
       DBUG_ASSERT(derived->table);
-    }
-    if (derived->is_derived() && derived->merge_underlying_list)
-    {
-      derived->table= derived->merge_underlying_list->table;
-      derived->merged_for_insert= TRUE;
     }
   }
   DBUG_RETURN(FALSE);
