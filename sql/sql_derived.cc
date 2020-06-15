@@ -733,6 +733,19 @@ bool mysql_derived_prepare(THD *thd, LEX *lex, TABLE_LIST *derived)
          (thd->lex->sql_command == SQLCOM_UPDATE_MULTI ||
           thd->lex->sql_command == SQLCOM_DELETE_MULTI))))
   {
+    if (!unit->prepared && derived->merge_underlying_list)
+    {
+      lex->context_analysis_only|= CONTEXT_ANALYSIS_ONLY_DERIVED;
+      if (unit->prepare(derived,0,0))
+        goto exit;
+      lex->context_analysis_only&= ~CONTEXT_ANALYSIS_ONLY_DERIVED;
+
+      // Create field translations
+      if (derived->init_derived(thd, FALSE))
+        goto exit;
+      // Privilege is never set for derived if they are merged
+      derived->grant.privilege= SELECT_ACL;
+    }
     /*
        System versioned tables may still require to get versioning conditions
        when modifying view (see vers_setup_conds()). Only UPDATE and DELETE are
