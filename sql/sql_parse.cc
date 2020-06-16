@@ -8253,7 +8253,14 @@ TABLE_LIST *st_select_lex::add_table_to_list(THD *thd,
   ptr->partition_names= partition_names;
 #endif /* WITH_PARTITION_STORAGE_ENGINE */
   /* Link table in global list (all used tables) */
-  lex->add_to_query_tables(ptr);
+  if (ptr->derived)
+  {
+    ptr->next_global= lex->query_tables;
+    lex->query_tables= *(lex->query_tables->prev_global)= ptr;
+    ptr->prev_global= &ptr;
+  }
+  else
+    lex->add_to_query_tables(ptr);
 
   // Pure table aliases do not need to be locked:
   if (ptr->db.str && !(table_options & TL_OPTION_ALIAS))
