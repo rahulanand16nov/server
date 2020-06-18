@@ -1,0 +1,144 @@
+create table t1 (a int) engine=myisam;
+insert into t1 values (3), (7), (1);
+update (select a from t1) as t set a=10;
+select * from t1;
+a
+10
+10
+10
+create view v1 as select a from t1;
+show create view v1;
+View	Create View	character_set_client	collation_connection
+v1	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`a` AS `a` from `t1`	latin1	latin1_swedish_ci
+update v1 set a=12;
+select * from t1;
+a
+12
+12
+12
+update (select * from t1) as t set a=14;
+select * from t1;
+a
+14
+14
+14
+update (select * from t1) as t set t.a=18 limit 1;
+select * from t1;
+a
+18
+14
+14
+update (select * from t1) as t set t.a=2 where a < 18;
+select * from t1;
+a
+18
+2
+2
+update (select * from (select * from t1) as t) as tt set tt.a=22 where a > 18;
+select * from t1;
+a
+18
+2
+2
+update (select * from (select * from t1) as t where t.a > 20) as tt set tt.a=24;
+select * from t1;
+a
+18
+2
+2
+create view v2 as select * from v1 where v1.a < 10;
+create view v3 as select * from v2;
+update t1 set a=10 limit 1;
+select * from t1;
+a
+10
+2
+2
+update t1 set a=7  where a > 10;
+select * from t1;
+a
+10
+2
+2
+update v3 set a=6;
+select * from t1;
+a
+10
+6
+6
+update (select * from (select * from t1) as t where t.a < 10) as tt set tt.a=2;
+select * from t1;
+a
+10
+2
+2
+update t1 set a=5 where a < 10 limit 1;
+select * from t1;
+a
+10
+5
+2
+update (select * from (select * from t1 where t1.a > 2) as t where t.a < 10) as tt set tt.a=4;
+select * from t1;
+a
+10
+4
+2
+create view v4 as select * from (select * from t1) t where t.a < 10;
+show create view v4;
+View	Create View	character_set_client	collation_connection
+v4	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v4` AS select `t`.`a` AS `a` from (select `test`.`t1`.`a` AS `a` from `test`.`t1`) `t` where `t`.`a` < 10	latin1	latin1_swedish_ci
+select * from v4;
+a
+4
+2
+create view v5 as select a as b from v1 where v1.a < 10;
+show create view v5;
+View	Create View	character_set_client	collation_connection
+v5	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v5` AS select `v1`.`a` AS `b` from `v1` where `v1`.`a` < 10	latin1	latin1_swedish_ci
+drop view v4;
+create view v4 as select * from (select a as b from t1) t where t.b < 10;
+show create view v4;
+View	Create View	character_set_client	collation_connection
+v4	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v4` AS select `t`.`b` AS `b` from (select `test`.`t1`.`a` AS `b` from `test`.`t1`) `t` where `t`.`b` < 10	latin1	latin1_swedish_ci
+select * from v4;
+b
+4
+2
+delete from t1;
+insert into t1 values (3),(7),(1);
+update v4 set v4.b=12 where v4.b > 5;
+select * from t1;
+a
+3
+12
+1
+update v5 set v5.b=12 where v5.b < 3;
+select * from t1;
+a
+3
+12
+12
+create view v6 as select * from (select a as b from t1) t where t.b < 10 with check option;
+show create view v6;
+View	Create View	character_set_client	collation_connection
+v6	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v6` AS select `t`.`b` AS `b` from (select `test`.`t1`.`a` AS `b` from `test`.`t1`) `t` where `t`.`b` < 10 WITH CASCADED CHECK OPTION	latin1	latin1_swedish_ci
+create view v7 as select a as b from v1 where v1.a < 10 with check option;
+show create view v7;
+View	Create View	character_set_client	collation_connection
+v7	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v7` AS select `v1`.`a` AS `b` from `v1` where `v1`.`a` < 10 WITH CASCADED CHECK OPTION	latin1	latin1_swedish_ci
+show create view v7;
+View	Create View	character_set_client	collation_connection
+v7	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v7` AS select `v1`.`a` AS `b` from `v1` where `v1`.`a` < 10 WITH CASCADED CHECK OPTION	latin1	latin1_swedish_ci
+update v7 set v7.b=20 where v7.b < 5;
+ERROR 44000: CHECK OPTION failed `test`.`v7`
+update v6 set v6.b=15 where v6.b < 5;
+ERROR 44000: CHECK OPTION failed `test`.`v6`
+update (select * from v6 where v6.b < 5) t set t.b=7;
+select * from t1;
+a
+7
+12
+12
+drop view v1,v2,v3,v4,v5,v6,v7;
+drop table t1;

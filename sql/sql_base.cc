@@ -3572,7 +3572,16 @@ open_and_process_table(THD *thd, TABLE_LIST *tables, uint *counter, uint flags,
   if (tables->derived)
   {
     if (!tables->view)
+    {
+      st_select_lex *sl= tables->derived->first_select();
+      if (sl->is_mergeable())
+      {
+        tables->merge_underlying_list= sl->table_list.first;
+        tables->propagate_properties_for_mergeable_derived();
+        tables->where= sl->where;
+      }
       goto end;
+    }
     /*
       We restore view's name and database wiped out by derived tables
       processing and fall back to standard open process in order to
@@ -8086,7 +8095,8 @@ insert_fields(THD *thd, Name_resolution_context *context, const char *db_name,
         temporary table. Thus in this case we can be sure that 'item' is an
         Item_field.
       */
-      if (any_privileges && !tables->is_with_table() && !tables->is_derived())
+      if (any_privileges && !tables->is_with_table() && !tables->is_derived() &&
+          !thd->lex->can_use_merged())
       {
         DBUG_ASSERT((tables->field_translation == NULL && table) ||
                     tables->is_natural_join);

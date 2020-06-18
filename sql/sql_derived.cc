@@ -558,6 +558,18 @@ bool mysql_derived_merge_for_insert(THD *thd, LEX *lex, TABLE_LIST *derived)
 }
 
 
+void TABLE_LIST::propagate_properties_for_mergeable_derived()
+{
+  for (TABLE_LIST *tbl= derived->first_select()->table_list.first;
+       tbl;
+       tbl= tbl->next_local)
+  {
+    tbl->lock_type= lock_type;
+    tbl->mdl_request.set_type(mdl_request.type);
+    tbl->updating= updating;
+  }
+}
+
 /*
   Initialize a derived table/view
 
@@ -589,8 +601,6 @@ bool mysql_derived_init(THD *thd, LEX *lex, TABLE_LIST *derived)
     DBUG_RETURN(FALSE);
 
   bool res= derived->init_derived(thd, TRUE);
-
-  derived->updatable= derived->updatable && derived->is_view();
 
   DBUG_RETURN(res);
 }

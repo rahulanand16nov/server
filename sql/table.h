@@ -2747,6 +2747,7 @@ struct TABLE_LIST
   bool set_as_with_table(THD *thd, With_element *with_elem);
   void reset_const_table();
   bool handle_derived(LEX *lex, uint phases);
+  void propagate_properties_for_mergeable_derived();
 
   /**
      @brief True if this TABLE_LIST represents an anonymous derived table,

@@ -1762,6 +1762,16 @@ public:
   */
   void add_to_query_tables(TABLE_LIST *table)
   {
+    if (table->derived)
+    {
+      TABLE_LIST *first_local= table->derived->first_select()->table_list.first;
+      if (first_local)
+      {
+        *(table->prev_global= first_local->prev_global)= table;
+        *(first_local->prev_global= &table->next_global)= first_local;
+        return;
+      }
+    }
     *(table->prev_global= query_tables_last)= table;
     query_tables_last= &table->next_global;
   }

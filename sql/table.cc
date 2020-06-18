@@ -5610,7 +5610,7 @@ bool TABLE_LIST::setup_underlying(THD *thd)
 {
   DBUG_ENTER("TABLE_LIST::setup_underlying");
 
-  if (!view || (!field_translation && merge_underlying_list))
+  if (!field_translation && merge_underlying_list)
   {
     SELECT_LEX *select= get_single_select();
 
@@ -5813,11 +5813,14 @@ bool TABLE_LIST::prep_check_option(THD *thd, uint8 check_opt_type)
 {
   DBUG_ENTER("TABLE_LIST::prep_check_option");
   bool is_cascaded= check_opt_type == VIEW_CHECK_CASCADED;
-  TABLE_LIST *merge_underlying_list= view->first_select_lex()->get_table_list();
+  TABLE_LIST *merge_underlying_list=
+    view ? view->first_select_lex()->get_table_list()  :
+    derived->first_select()->get_table_list();
+  
   for (TABLE_LIST *tbl= merge_underlying_list; tbl; tbl= tbl->next_local)
   {
     /* see comment of check_opt_type parameter */
-    if (tbl->view && tbl->prep_check_option(thd, (is_cascaded ?
+    if (tbl->derived && tbl->prep_check_option(thd, (is_cascaded ?
                                                   VIEW_CHECK_CASCADED :
                                                   VIEW_CHECK_NONE)))
       DBUG_RETURN(TRUE);
@@ -6842,7 +6845,11 @@ const char *Field_iterator_table_ref::get_table_name()
   if (table_ref->view)
     return table_ref->view_name.str;
   if (table_ref->is_derived())
+  {
+    if (table_ref->is_merged_derived())
+      return table_ref->alias.str;
     return table_ref->table->s->table_name.str;
+  }
   else if (table_ref->is_natural_join)
     return natural_join_it.column_ref()->safe_table_name();
 
@@ -6857,6 +6864,8 @@ const char *Field_iterator_table_ref::get_db_name()
 {
   if (table_ref->view)
     return table_ref->view_db.str;
+  if (table_ref->is_merged_derived())
+    return 0;
   else if (table_ref->is_natural_join)
     return natural_join_it.column_ref()->safe_db_name();
 
@@ -9181,7 +9190,7 @@ bool TABLE_LIST::init_derived(THD *thd, bool init_view)
     /* A subquery might be forced to be materialized due to a side-effect. */
     if (!is_materialized_derived() && first_select->is_mergeable() &&
         optimizer_flag(thd, OPTIMIZER_SWITCH_DERIVED_MERGE) &&
-        !thd->lex->can_not_use_merged() &&
+        (!thd->lex->can_not_use_merged() && is_derived()) &&
         !(thd->lex->sql_command == SQLCOM_UPDATE_MULTI ||
           thd->lex->sql_command == SQLCOM_DELETE_MULTI) &&
         !is_recursive_with_table())
@@ -9198,6 +9207,40 @@ bool TABLE_LIST::init_derived(THD *thd, bool init_view)
     set_check_materialized();
   }
 
+  if ((updatable= unit->first_select()->is_mergeable()))
+  {
+    bool is_updatable= false;
+    for (TABLE_LIST *tbl= unit->first_select()->table_list.first;
+         tbl; tbl= tbl->next_local)
+    {
+      if ((tbl->is_view() && !tbl->updatable_view) || 
+          (tbl->is_derived() && !tbl->updatable) ||
+          !tbl->updatable || tbl->schema_table)
+	continue;
+      is_updatable= true;
+      break;
+    }
+    updatable= is_updatable;      
+  }
+
+  int rc= 0;
+  if (!thd->lex->can_use_merged())
+    merge_underlying_list= 0;
+  else if (is_derived())
+  {
+    st_select_lex *sl= unit->first_select();
+    List_iterator_fast<Item> it(sl->item_list);
+    Item *item;
+    while ((item= it++))
+    {
+      if (item->real_item()->type() == Item::FIELD_ITEM)
+        ((Item_field *)item)->any_privileges= true;
+    }
+    rc= setup_wild(thd, this, sl->item_list, NULL, sl);
+
+    if (!rc)
+      rc= create_field_translation(thd);
+  }
   /*
     Create field translation for mergeable derived tables/views.
     For derived tables field translation can be created only after
@@ -9208,10 +9251,10 @@ bool TABLE_LIST::init_derived(THD *thd, bool init_view)
     if (is_view() ||
         (unit->prepared &&
 	!(thd->lex->context_analysis_only & CONTEXT_ANALYSIS_ONLY_VIEW)))
-      create_field_translation(thd);
+      rc= create_field_translation(thd);
   }
 
-  return FALSE;
+  return MY_TEST(rc);
 }
 
 
