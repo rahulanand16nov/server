@@ -1747,7 +1747,7 @@ End SQL_MODE_ORACLE_SPECIFIC */
         '-' '+' '*' '/' '%' '(' ')'
         ',' '!' '{' '}' '&' '|'
 
-%type <with_clause> with_clause
+%type <with_clause> with_clause opt_with_clause
 
 %type <lex_str_ptr> query_name
 
@@ -13094,7 +13094,7 @@ update_table_list:
 /* Update rows in a table */
 
 update:
-          UPDATE_SYM
+          opt_with_clause UPDATE_SYM
           {
             LEX *lex= Lex;
             if (Lex->main_select_push())
@@ -13114,12 +13114,18 @@ update:
               be too pessimistic. We will decrease lock level if possible in
               mysql_multi_update().
             */
-            slex->set_lock_for_tables($3, slex->table_list.elements == 1);
+            slex->set_lock_for_tables($4, slex->table_list.elements == 1);
+            if ($1)
+            {
+              st_select_lex_unit *unit= Lex->current_select->master_unit();
+              unit->set_with_clause($1);
+              $1->attach_to(unit->first_select());
+            }
           }
           opt_where_clause opt_order_clause delete_limit_clause
           {
-            if ($10)
-              Select->order_list= *($10);
+            if ($11)
+              Select->order_list= *($11);
           } stmt_end {}
         ;
 
@@ -14772,6 +14778,11 @@ temporal_literal:
               MYSQL_YYABORT;
           }
         ;
+
+opt_with_clause:
+    /* empty */ { $$= 0; }
+  | with_clause { $$= $1; }
+
 
 with_clause:
           WITH opt_recursive

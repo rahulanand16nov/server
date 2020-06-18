@@ -3616,8 +3616,14 @@ open_and_process_table(THD *thd, TABLE_LIST *tables, uint *counter, uint flags,
       }
       if (tables->set_as_with_table(thd, tables->with))
         DBUG_RETURN(1);
-      else
-        goto end;
+      st_select_lex *sl= tables->derived->first_select();
+      if (sl->is_mergeable())
+      {
+        tables->merge_underlying_list= sl->table_list.first;
+        tables->propagate_properties_for_mergeable_derived();
+        tables->where= sl->where;
+      }
+      goto end;
     }
   }
 
