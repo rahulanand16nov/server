@@ -1,0 +1,97 @@
+create table t1 (a int) engine=myisam;
+insert into t1 values (3), (7), (1);
+with cte1 as (select a from t1) update cte1 set a=10;
+select * from t1;
+a
+10
+10
+10
+with cte1 as (select * from t1) update cte1 set a=14;
+select * from t1;
+a
+14
+14
+14
+with cte1 as (select * from t1) update cte1 set cte1.a=18 limit 1;
+select * from t1;
+a
+18
+14
+14
+with cte1 as (select * from t1) update cte1 set cte1.a=2 where a<18;
+select * from t1;
+a
+18
+2
+2
+with cte1 as (select * from (select * from t1) dt1)
+update cte1 set cte1.a=22 where a>18;
+select * from t1;
+a
+18
+2
+2
+with cte1 as (select * from (select * from t1) dt1 where dt1.a > 17)
+update cte1 set cte1.a=24;
+select * from t1;
+a
+24
+2
+2
+create view v1 as select * from t1 where t1.a < 10;
+create view v2 as select * from v1;
+update v2 set a=6;
+select * from t1;
+a
+24
+6
+6
+with cte1 as (select * from (select * from t1 where t1.a > 2) dt1 where dt1.a < 24)
+update cte1 set cte1.a=4 limit 1;
+select * from t1;
+a
+24
+4
+6
+drop view v1, v2;
+drop table t1;
+create table t1 (a int);
+insert into t1 values (1),(2),(3),(4),(7),(10);
+create view v1 as (select * from t1);
+select * from v1;
+a
+1
+2
+3
+4
+7
+10
+with cte1 as (select * from v1) update cte1 set a=20 where a>5;
+select * from t1;
+a
+1
+2
+3
+4
+20
+20
+with cte1 as (select * from v1 where a>3) update cte1 set a=0 where a<9;
+select * from t1;
+a
+1
+2
+3
+0
+20
+20
+with cte1 as (select * from (select * from v1) dt1) update cte1 set a=0 where a<7;
+select * from t1;
+a
+0
+0
+0
+0
+20
+20
+drop view v1;
+drop table t1;
