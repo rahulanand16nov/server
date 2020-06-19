@@ -1177,6 +1177,19 @@ bool TABLE_LIST::set_as_with_table(THD *thd, With_element *with_elem)
   derived->first_select()->set_linkage(DERIVED_TABLE_TYPE);
   select_lex->add_statistics(derived);
   with_elem->inc_references();
+  // Reorder first local of this table in global list
+  TABLE_LIST *fl= derived->first_select()->table_list.first;
+  if (fl && next_global != fl)
+    {
+      if (!fl->next_global)
+        *(thd->lex->query_tables_last= fl->prev_global)= fl->next_global;
+      else
+        *(fl->next_global->prev_global= fl->prev_global)= fl->next_global; 
+      // Here, next_global will always point to a real object.
+      TABLE_LIST *second_global= next_global;
+      *(fl->prev_global= second_global->prev_global)= fl;
+      *(second_global->prev_global= &fl->next_global)= second_global;
+    }
   return false;
 }
 
