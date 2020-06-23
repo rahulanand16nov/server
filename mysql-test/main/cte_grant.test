@@ -128,3 +128,92 @@ with cte as (select * from t1 where i < 4)
 --connection default
 drop database db;
 drop user foo@localhost;
+
+--echo # privileges check for CTE UPDATE
+create database priv_test;
+create user2 testing@localhost;
+connect (user2,localhost,testing,,test);
+connection user2;
+
+connection root;
+
+create table priv_test.t1 (a int, b int);
+insert into priv_test.t1 (1,3),(8,3),(11,11);
+
+grant select, update(b), delete on priv_test.t1 to testing@localhost;
+
+connection user2;
+
+--error ER_COLUMNACCESS_DENIED_ERROR
+with cte1 as (select * from t1) update cte1 set a=0;
+with cte1 as (select * from t1) update cte1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+with cte1 as (select * from t1 where a>0 and b<10) update cte1 set a=0;
+with cte1 as (select * from t1 where a>0 and b<10) update cte1 set b=0;
+
+--echo # Testing simple views for priv
+create view v1 as (select * from t1);
+create view v2 as (select * from t1 where a>0 and b<10);
+select * from v1;
+select * from v2;
+
+--error ER_COLUMNACCESS_DENIED_ERROR
+with cte1 as (select * from v1) update cte1 set a=0;
+with cte1 as (select * from v1) update cte1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+with cte1 as (select * from v1 where a>0 and b<10) update cte1 set a=0;
+with cte1 as (select * from v1 where a>0 and b<10) update cte1 set b=0;
+
+--error ER_COLUMNACCESS_DENIED_ERROR
+with cte1 as (select * from v2) update cte1 set a=0;
+with cte1 as (select * from v2) update cte1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+with cte1 as (select * from v2 where a>1 and b<9) update cte1 set a=0;
+with cte1 as (select * from v2 where a>1 and b<9) update cte1 set b=0;
+
+--echo # Testing views with DTs inside for priv
+create view v3 as (select * from (select * from t1) dt1);
+create view v4 as (select * from (select * from t1 where a>0 and b<10) dt1);
+select * from v3;
+select * from v4;
+
+--error ER_COLUMNACCESS_DENIED_ERROR
+with cte1 as (select * from v3) update cte1 set a=0;
+with cte1 as (select * from v3) update cte1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+with cte1 as (select * from v3 where a>0 and b<10) update cte1 set a=0;
+with cte1 as (select * from v3 where a>0 and b<10) update cte1 set b=0;
+
+--error ER_COLUMNACCESS_DENIED_ERROR
+with cte1 as (select * from v4) update cte1 set a=0;
+with cte1 as (select * from v4) update cte1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+with cte1 as (select * from v4 where a>1 and b<9) update cte1 set a=0;
+with cte1 as (select * from v4 where a>1 and b<9) update cte1 set b=0;
+drop view v3, v4;
+
+--echo # Testing views with views inside them for priv
+create view v3 as (select * from v1);
+create view v4 as (select * from v2);
+select * from v3;
+select * from v4;
+
+--error ER_COLUMNACCESS_DENIED_ERROR
+with cte1 as (select * from v3) update cte1 set a=0;
+with cte1 as (select * from v3) update cte1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+with cte1 as (select * from v3 where a>0 and b<10) update cte1 set a=0;
+with cte1 as (select * from v3 where a>0 and b<10) update cte1 set b=0;
+
+--error ER_COLUMNACCESS_DENIED_ERROR
+with cte1 as (select * from v4) update cte1 set a=0;
+with cte1 as (select * from v4) update cte1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+with cte1 as (select * from v4 where a>1 and b<9) update cte1 set a=0;
+with cte1 as (select * from v4 where a>1 and b<9) update cte1 set b=0;
+drop view v1, v2, v3, v4;
+
+connection root;
+revoke all privileges on priv_test.t1 from priv_test@localhost;
+drop user testing@localhost;
+drop database priv_test;

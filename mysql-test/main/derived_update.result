@@ -142,3 +142,269 @@ a
 12
 drop view v1,v2,v3,v4,v5,v6,v7;
 drop table t1;
+create table t1 (a int);
+insert into t1 values (1),(2),(3),(4),(7),(10);
+create table t2 (b int);
+insert into t2 values (4),(7),(1),(3),(11);
+create view v1 as (select * from t1);
+create view v2 as (select * from (select * from t2) dt1 where b < 10);
+create view v3 as (select * from v1 where a<7);
+create view v4 as (select * from v2 where b>3);
+# Non-updatable DTs with base tables only
+update (select * from t1 union select * from t2) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select * from t1 group by a) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select * from t1 group by a having count(*) >=1) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select DISTINCT * from t1) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select * from t1 limit 1) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select * from t1 union select * from t2 limit 2) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select DISTINCT * from t1 union select * from t2) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+# Non-updatable DTs with views containing DT and base table
+update (select * from v1 union select * from v2) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select * from v1 group by a) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select * from v1 group by a having count(*) >=1) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select DISTINCT * from v1) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select * from v1 limit 1) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select * from v1 union select * from v2 limit 2) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select DISTINCT * from v1 union select * from v2) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+# Non-updatable DTs with Embedded views and Embedded DT views
+update (select * from v3 union select * from v4) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select * from v3 group by a) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select * from v3 group by a having count(*) >=1) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select DISTINCT * from v3) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select * from v3 limit 1) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select * from v3 union select * from v4 limit 2) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select DISTINCT * from v3 union select * from v4) dt1 set a=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+# Non-updatable views with base table only
+create view v5 as (select * from t1 union select * from t2);
+select * from v5;
+a
+1
+2
+3
+4
+7
+10
+11
+create view v6 as (select * from t1 group by a);
+select * from v6;
+a
+1
+2
+3
+4
+7
+10
+create view v7 as (select * from t1 group by a having count(*) >=1);
+select * from v7;
+a
+1
+2
+3
+4
+7
+10
+create view v8 as (select DISTINCT * from t1);
+select * from v8;
+a
+1
+2
+3
+4
+7
+10
+create view v9 as (select * from t1 limit 1);
+select * from v9;
+a
+1
+create view v10 as (select * from t1 union select * from t2 limit 2);
+select * from v10;
+a
+1
+2
+create view v11 as (select DISTINCT * from t1 union select * from t2);
+select * from v11;
+a
+1
+2
+3
+4
+7
+10
+11
+update v5 set a=0;
+ERROR HY000: The target table v5 of the UPDATE is not updatable
+update v6 set a=0;
+ERROR HY000: The target table v6 of the UPDATE is not updatable
+update v7 set a=0;
+ERROR HY000: The target table v7 of the UPDATE is not updatable
+update v8 set a=0;
+ERROR HY000: The target table v8 of the UPDATE is not updatable
+update v9 set a=0;
+ERROR HY000: The target table v9 of the UPDATE is not updatable
+update v10 set a=0;
+ERROR HY000: The target table v10 of the UPDATE is not updatable
+update v11 set a=0;
+ERROR HY000: The target table v11 of the UPDATE is not updatable
+drop view v5, v6, v7, v8, v9, v10, v11;
+# Non-updatable views with DTs and base table inside them
+create view v5 as (select * from v1 union select * from v2);
+select * from v5;
+a
+1
+2
+3
+4
+7
+10
+create view v6 as (select * from v1 group by a);
+select * from v6;
+a
+1
+2
+3
+4
+7
+10
+create view v7 as (select * from v1 group by a having count(*) >=1);
+select * from v7;
+a
+1
+2
+3
+4
+7
+10
+create view v8 as (select DISTINCT * from v1);
+select * from v8;
+a
+1
+2
+3
+4
+7
+10
+create view v9 as (select * from v1 limit 1);
+select * from v9;
+a
+1
+create view v10 as (select * from v1 union select * from v2 limit 2);
+select * from v10;
+a
+1
+2
+create view v11 as (select DISTINCT * from v1 union select * from v2);
+select * from v11;
+a
+1
+2
+3
+4
+7
+10
+update v5 set a=0;
+ERROR HY000: The target table v5 of the UPDATE is not updatable
+update v6 set a=0;
+ERROR HY000: The target table v6 of the UPDATE is not updatable
+update v7 set a=0;
+ERROR HY000: The target table v7 of the UPDATE is not updatable
+update v8 set a=0;
+ERROR HY000: The target table v8 of the UPDATE is not updatable
+update v9 set a=0;
+ERROR HY000: The target table v9 of the UPDATE is not updatable
+update v10 set a=0;
+ERROR HY000: The target table v10 of the UPDATE is not updatable
+update v11 set a=0;
+ERROR HY000: The target table v11 of the UPDATE is not updatable
+drop view v5, v6, v7, v8, v9, v10, v11;
+# Non-updatable views with views containing DT and another simple views
+create view v5 as (select * from v3 union select * from v4);
+select * from v5;
+a
+1
+2
+3
+4
+7
+create view v6 as (select * from v3 group by a);
+select * from v6;
+a
+1
+2
+3
+4
+create view v7 as (select * from v3 group by a having count(*) >=1);
+select * from v7;
+a
+1
+2
+3
+4
+create view v8 as (select DISTINCT * from v3);
+select * from v8;
+a
+1
+2
+3
+4
+create view v9 as (select * from v3 limit 1);
+select * from v9;
+a
+1
+create view v10 as (select * from v3 union select * from v4 limit 2);
+select * from v10;
+a
+1
+2
+create view v11 as (select DISTINCT * from v3 union select * from v4);
+select * from v11;
+a
+1
+2
+3
+4
+7
+update v5 set a=0;
+ERROR HY000: The target table v5 of the UPDATE is not updatable
+update v6 set a=0;
+ERROR HY000: The target table v6 of the UPDATE is not updatable
+update v7 set a=0;
+ERROR HY000: The target table v7 of the UPDATE is not updatable
+update v8 set a=0;
+ERROR HY000: The target table v8 of the UPDATE is not updatable
+update v9 set a=0;
+ERROR HY000: The target table v9 of the UPDATE is not updatable
+update v10 set a=0;
+ERROR HY000: The target table v10 of the UPDATE is not updatable
+update v11 set a=0;
+ERROR HY000: The target table v11 of the UPDATE is not updatable
+drop view v5, v6, v7, v8, v9, v10, v11;
+# Non-updatable tables with only non-updatable fields
+update (select a+1 as a1 from t1) dt1 set a1=0;
+ERROR HY000: The target table dt1 of the UPDATE is not updatable
+update (select a+1 as a1 from t1 where a1>0) dt1 set a1=0;
+ERROR 42S22: Unknown column 'a1' in 'where clause'
+update (select a+1 as a1 from t1 where a1>0) dt1 set a1=0 where a1<10;
+ERROR 42S22: Unknown column 'a1' in 'where clause'
+drop table t1, t2;
+drop view v1, v2, v3, v4;
