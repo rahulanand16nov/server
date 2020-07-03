@@ -1,0 +1,715 @@
+--echo # Test file for multi-table CTE update queries
+
+--echo # Initialization of Tables
+create table t1 (a int, b int);
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+select * from t1;
+create table t2 (c int, d int);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+select * from t1;
+
+--echo # Following queries tries different way to update base tables (t1, t2)
+--echo # by using different combinations of DTs, Base Tables, Views, where clauses
+--echo # and CTEs.
+
+--echo # Updating CTE, Tables used - base table inside CTE + Base table
+with cte1 as (select * from t1) update cte1, t2 set a=0;
+select * from t1;
+
+--echo # ... Adding where clause inside specification of CTE:
+with cte1 as (select * from t1 where b>10) update cte1, t2 set b=4;
+select * from t1;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from t1 where b>3) update cte1, t2 set a=5 where b>4;
+select * from t1;
+
+--echo # Updating Base Table, Tables used - CTE & base:
+with cte1 as (select * from t1) update cte1, t2 set c=1;
+select * from t2;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from t1) update cte1, t2 set c=2 where d>10;
+select * from t2;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+--echo # Updating CTE containing two base tables:
+update (select * from t1, t2) dt1 set a=0;
+select * from t1;
+
+--echo # ... Adding where clause inside specification:
+with cte1 as (select * from t1, t2 where b>3) update cte1 set a=3;
+select * from t1;
+
+--echo # ... Adding where clause outside and removing from inside:
+with cte1 as (select * from t1, t2) update cte1 set a=5 where b<4;
+select * from t1;
+
+--echo # ... Adding where clause to inside and outside:
+with cte1 as (select * from t1, t2 where a>3 and c<10) update cte1 set a=0 where a>4;
+select * from t1;
+
+--echo # Updating 2nd BT:
+with cte1 as (select * from t1, t2) update cte1 set c=2;
+select * from t2;
+
+--echo # ... Adding where clause inside specification of CTE:
+with cte1 as (select * from t1, t2 where d<10) update cte1 set c=3;
+select * from t2;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from t1, t2) update cte1 set c=6 where a>1 and d>=10;
+select * from t2;
+
+--echo # ... Adding where clause inside and outside:
+with cte1 as (select * from t1, t2 where a>3 and c<5) update cte1 set c=9 where d>4;
+select * from t2;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # Updating CTE containing DT with two base tables:
+with cte1 as (select * from (select * from t1, t2) dt1) update cte1 set a=0;
+select * from t1;
+
+--echo # ... Adding where clause inside specification:
+with cte1 as (select * from (select * from t1, t2) dt1 where b>3) update cte1 set a=3;
+select * from t1;
+
+--echo # ... Adding where clause outside and removing from inside:
+with cte1 as (select * from (select * from t1, t2) dt1) update cte1 set a=5 where b<4;
+select * from t1;
+
+--echo # ... Adding where clause to inside and outside:
+with cte1 as (select * from (select * from t1, t2) dt1 where a>3 and c<10)
+update cte1 set a=0 where a>4;
+select * from t1;
+
+--echo # Updating 2nd BT:
+with cte1 as (select * from (select * from t1, t2) dt1) update cte1 set c=2;
+select * from t2;
+
+--echo # ... Adding where clause inside specification of CTE:
+with cte1 as (select * from (select * from t1, t2) dt1 where d<10) update cte1 set c=3;
+select * from t2;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from (select * from t1, t2) dt1) update cte1 set c=6 where a>1 and d>=10;
+select * from t2;
+
+--echo # ... Adding where clause inside and outside:
+with cte1 as (select * from (select * from t1, t2) dt1 where a>3 and c<5) 
+update cte1 set c=9 where d>4;
+select * from t2;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # Updating Nested CTE with two base tables
+with cte1 as (select * from t1,t2), cte2 as (select * from cte1) 
+update cte2 set a=0;
+select * from t1;
+
+--echo # ... Adding where clause inside specification of cte2:
+with cte1 as (select * from t1, t2), cte2 as (select * from cte1 where b>3)
+update cte2 set a=3;
+select * from t1;
+
+--echo # ... Adding where clause outside and removing from inside:
+with cte1 as (select * from t1,t2), cte2 as (select * from cte1) 
+update cte2 set a=5 where b<4;
+select * from t1;
+
+--echo # ... Adding where clause to inside(cte2) and outside:
+with cte1 as (select * from t1, t2), cte2 as (select * from cte1 where a>3 and c<10)
+update cte2 set a=0 where a>4;
+select * from t1;
+
+--echo # Updating 2nd BT:
+with cte1 as (select * from t1,t2), cte2 as (select * from cte1) 
+update cte2 set c=2;
+select * from t2;
+
+--echo # ... Adding where clause inside specification of cte2:
+with cte1 as (select * from t1, t2), cte2 as (select * from cte1 where d<10)
+update cte2 set c=3;
+select * from t2;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from t1,t2), cte2 as (select * from cte1) 
+update cte2 set c=6 where a>1 and d<10;
+select * from t2;
+
+--echo # ... Adding where inside (cte2) and outside:
+with cte1 as (select * from t1, t2), cte2 as (select * from cte1 where a>3 and c<5)
+update cte2 set c=9 where d>4;
+select * from t2;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # Updating CTE containinga DT & BT:
+with cte1 as (select * from (select * from t1) dt1) update cte1, t2 set a=0;
+select * from t1;
+
+--echo # ... Adding where clause inside specification of CTE:
+with cte1 as (select * from (select * from t1) dt1 where b>10) update cte1, t2 set b=4;
+select * from t1;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from (select * from t1) dt1 where b>3) update cte1, t2 set a=5 where b>4;
+select * from t1;
+
+--echo # Updating Base Table, Tables used - CTE & base:
+with cte1 as (select * from (select * from t1) dt1) update cte1, t2 set c=1;
+select * from t2;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from (select * from t1) dt1) update cte1, t2 set c=2 where d>10;
+select * from t2;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # Updating Nested CTE (1 base table) & BT:
+with cte1 as (select * from t1), cte2 as (select * from cte1) update cte2, t2 set a=0;
+select * from t1;
+
+--echo # ... Adding where clause in specification of cte2:
+with cte1 as (select * from t1), cte2 as (select * from cte1 where b>5) 
+update cte2, t2 set a=9;
+select * from t1;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from t1), cte2 as (select * from cte1 where b<5) 
+update cte2, t2 set a=7 where b>1;
+select * from t1;
+
+--echo # Updating BT:
+with cte1 as (select * from t1), cte2 as (select * from cte1) 
+update cte2, t2 set c=1;
+select * from t2;
+
+--echo # ... Adding where clause inside specification of cte2:
+with cte1 as (select * from t1), cte2 as (select * from cte1 where a>4) 
+update cte2, t2 set c=3;
+select * from t2;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from t1), cte2 as (select * from cte1 where a>4) 
+update cte2, t2 set c=3 where d<5;
+select * from t2;
+
+--echo # Switching places of CTE and BT:
+--echo # Updating BT 't1':
+with cte1 as (select * from t1), cte2 as (select * from cte1 where c>2)
+update t1, cte2 set a=0;
+select * from t1;
+
+--echo # ... Adding where clause inside specification of cte2:
+with cte1 as (select * from t1), cte2 as (select * from cte1 where c>2)
+update t1, cte2 set a=0 where b>2;
+select * from t1;
+
+--echo # Updating CTE:
+with cte1 as (select * from t1), cte2 as (select * from cte1 where c>2)
+update t1, cte2 set c=1;
+select * from t1;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from t1), cte2 as (select * from cte1 where c><)
+update t1, cte2 set a=0 where d>4;
+select * from t1;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # Pattern: Not allowed queries follow by followed ones:
+--echo # Updating CTE with non-updatable columns inside specification:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a+1 as a1, b from t1) cte1, t2 set a1=0;
+with cte1 as (select a+1 as a1, b from t1) cte1, t2 set b=0;
+select * from t1;
+
+--echo # ... Adding where clause inside specification:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a+1 as a1, b from t1 where b>0) update cte1, t2 set a1=0;
+with cte1 as (select a+1 as a1, b from t1 where b>0) update cte1, t2 set b=0;
+select * from t1;
+
+--echo # ...Adding where clause outside:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a+1 as a1, b from t1 where b>0) update cte1, t2 set a1=0 where b>1;
+with cte1 as (select a+1 as a1, b from t1 where b>0) update cte1, t2 set b=0 where b>1;
+select * from t1;
+
+--echo # Updating BT:
+with cte1 as (select a+1 as a1, b from t1 where b>0) update cte1, t2 set c=1 where d>2;
+select * from t2;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # Two base tables inside single CTE with non updatable columns
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a+1 as a1, c from t1, t2) update cte1 set a1=0;
+with cte1 as (select a+1 as a1, c from t1, t2) update cte1 set c=0;
+select * from t2;
+
+--echo # ... Adding where clause inside the specification:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a+1 as a1, c from t1, t2 where b>3 and c<10) update cte1 set a1=0;
+with cte1 as (select a+1 as a1, c from t1, t2 where b>3 and c<10) update cte1 set c=2;
+select * from t2;
+
+--echo # ... Adding where clause outside as well:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a+1 as a1, b, c from t1, t2) update cte1 set a1=0 where b>1 and c<10;
+with cte1 as (select a+1 as a1, b, c from t1, t2) update cte1 set c=0 where b>1 and c<10;
+select * from t2;
+
+--echo # Updating multiple columns:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a+1 as a1, c, d from t1, t2 where b>3 and c<10)
+update cte1 set a1=0, c=2 where d>4;
+with cte1 as (select a+1 as a1, c, d from t1, t2 where b>3 and c<10)
+update cte1 set c=2, d=3 where d>4;
+select * from t2;
+
+--echo # Using non-updatable column from 2nd BT:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a, c+1 as c1, d from t1, t2) update cte1 set c1=2;
+with cte1 as (select a, c+1 as c1, d from t1, t2) update cte1 set d=2;
+select * from t2;
+
+--echo # ... Adding where clause inside specification of update cte1:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a, c+1 as c1, d from t1, t2 where a>3 and d<10) update cte1 set c1=2;
+with cte1 as (select a, c+1 as c1, d from t1, t2 where a>3 and d<10) update cte1 set d=0;
+select * from t2;
+
+--echo # ... Adding where clause outside:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a, c+1 as c1, d from t1, t2) update cte1 set c1=2 where a>1 and d<10;
+with cte1 as (select a, c+1 as c1, d from t1, t2) update cte1 set d=2 where a>1 and d<10;
+select * from t2;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # DT with two base tables inside CTE with non-updatable columns
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a+1 as a1, c from (select * from t1, t2) dt1) update cte1 set a1=0;
+with cte1 as (select a+1 as a1, c from (select * from t1, t2) dt1) update cte1 set c=0;
+select * from t2;
+
+--echo # ... Adding where clause inside the specification:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a+1 as a1, c from (select * from t1, t2) dt1 where b>3 and c<10)
+update cte1 set a1=0;
+with cte1 as (select a+1 as a1, c from (select * from t1, t2) dt1 where b>3 and c<10)
+update cte1 set c=2;
+select * from t2;
+
+--echo # ... Adding where clause outside as well:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a+1 as a1, b, c from (select * from t1, t2) dt1) 
+update cte1 set a1=0 where b>1 and c<10;
+with cte1 as (select a+1 as a1, b, c from (select * from t1, t2) dt1) 
+update cte1 set c=0 where b>1 and c<10;
+select * from t2;
+
+--echo # Updating multiple columns:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a+1 as a1, c, d from (select * from t1, t2) dt1 where b>3 and c<10) 
+update cte1 set a1=0, c=2 where d>4;
+with cte1 as (select a+1 as a1, c, d from (select * from t1, t2) dt1 where b>3 and c<10) 
+update cte1 set c=2, d=3 where d>4;
+select * from t2;
+
+--echo # Using non-updatable column from 2nd BT:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a, c+1 as c1, d from (select * from t1, t2) dt1) 
+update cte1 set c1=2;
+with cte1 as (select a, c+1 as c1, d from (select * from t1, t2) dt1) 
+update cte1 set d=2;
+select * from t2;
+
+--echo # ... Adding where clause inside specification of cte1:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a, c+1 as c1, d from (select * from t1, t2) dt1 where a>3 and d<10) 
+update cte1 set c1=2;
+with cte1 as (select a, c+1 as c1, d from (select * from t1, t2) dt1 where a>3 and d<10)
+update cte1 set d=0;
+select * from t2;
+
+--echo # ... Adding where clause outside:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select a, c+1 as c1, d from (select * from t1, t2) dt1) 
+update cte1 set c1=2 where a>1 and d<10;
+with cte1 as (select a, c+1 as c1, d from (select * from t1, t2) dt1) 
+update cte1 set d=2 where a>1 and d<10;
+select * from t2;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # Nested CTEs with 2 BTs + non-updatable columns:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select * from t1,t2), cte2 as (select a+1 as a1, b from cte1) 
+update cte2 set a1=0;
+with cte1 as (select * from t1,t2), cte2 as (select a+1 as a1, b from cte1) 
+update cte2 set b=0;
+select * from t1;
+
+--echo # ... Adding where clause inside specification of cte2:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select * from t1, t2), cte2 as (select a+1 as a1, b,c from cte1 where c>3)
+update cte2 set a1=3;
+with cte1 as (select * from t1, t2), cte2 as (select a+1 as a1, b,c from cte1 where c>3)
+update cte2 set b=3;
+select * from t1;
+
+--echo # ... Adding where clause outside and removing from inside:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select * from t1,t2), cte2 as (select a+1 as a1, b, c from cte1) 
+update cte2 set a1=5 where c<4;
+with cte1 as (select * from t1,t2), cte2 as (select a+1 as a1, b, c from cte1) 
+update cte2 set b=5 where c<4;
+select * from t1;
+
+--echo # ... Adding where clause to inside(cte2) and outside:
+--error ER_NONUPDATEABLE_COLUMN
+with cte1 as (select * from t1, t2), cte2 as (select a+1 as a1, b, c from cte1 where c<10)
+update cte2 set a1=0 where c>4;
+with cte1 as (select * from t1, t2), cte2 as (select a+1 as a1, b, c from cte1 where c<10)
+update cte2 set b=0 where c>4;
+select * from t1;
+
+--echo # Updating 2nd BT:
+with cte1 as (select * from t1,t2), cte2 as (select a+1 as a1, b from cte1) 
+update cte2 set c=2;
+select * from t2;
+
+--echo # ... Adding where clause inside specification of cte2:
+with cte1 as (select * from t1, t2), cte2 as (select a+1 as a1, b from cte1 where d<10)
+update cte2 set c=3;
+select * from t2;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from t1,t2), cte2 as (select a+1 as a1, b from cte1) 
+update cte2 set c=6 where a>1 and d<10;
+select * from t2;
+
+--echo # ... Adding where inside (cte2) and outside:
+with cte1 as (select * from t1, t2), cte2 as (select a+1 as a1, b from cte1 where a>3 and c<5)
+update cte2 set c=9 where d>4;
+select * from t2;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # Initialization of views:
+create view v1 as (select * from t1);
+select * from v1;
+create view v2 as (select * from t2);
+select * from v2;
+
+
+--echo # Updating CTE (1 view) & a View:
+with cte1 as (select * from v1) update cte1, v2 set a=0;
+select * from v1;
+
+--echo # ... Adding where clause inside specification of cte1:
+with cte1 as (select * from v1 where b>3) update cte1, v2 set a=2;
+select * from v1;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from v1 where b>2) update cte1, v2 set a=3 where a>1;
+select * from v1;
+
+--echo # Updating multiple columns:
+with cte1 as (select * from v1 where a>0) update cte1, v2 set c=1, d=3 where a>1;
+select * from v2;
+
+--echo # ... Adding second where clause
+with cte1 as (select * from v1 where a>0) update cte1, v2 set c=3, d=4 where a>1 and c<11;
+select * from v1;
+
+--echo # Switching places and using another view:
+with cte1 as (select * from v2) update cte1, v1 set c=0;
+select * from v2;
+
+--echo # ... Adding where clause inside specification of cte1:
+with cte1 as (select * from v2 where c>2) update cte1, v1 set c=3;
+select * from v1;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from v2 where c>2) update cte1, v1 set c=0 where a>1;
+select * from v1;
+
+--echo # Updating multiple columns of view:
+with cte1 as (select * from v2 where c>2) update cte1, v1 set a=0, b=1 where a>1;
+select * from v1;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # Updating CTE containing two views:
+update (select * from v1, v2) dt1 set a=0;
+select * from v1;
+
+--echo # ... Adding where clause inside specification:
+with cte1 as (select * from v1, v2 where b>3) update cte1 set a=3;
+select * from v1;
+
+--echo # ... Adding where clause outside and removing from inside:
+with cte1 as (select * from v1, v2) update cte1 set a=5 where b<4;
+select * from v1;
+
+--echo # ... Adding where clause to inside and outside:
+with cte1 as (select * from v1, v2 where a>3 and c<10) update cte1 set a=0 where a>4;
+select * from v1;
+
+--echo # Updating 2nd view:
+with cte1 as (select * from v1, v2) update cte1 set c=2;
+select * from v2;
+
+--echo # ... Adding where clause inside specification of CTE:
+with cte1 as (select * from v1, v2 where d<10) update cte1 set c=3;
+select * from v2;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from v1, v2) update cte1 set c=6 where a>1 and d>=10;
+select * from v2;
+
+--echo # ... Adding where clause inside and outside:
+with cte1 as (select * from v1, v2 where a>3 and c<5) update cte1 set c=9 where d>4;
+select * from v2;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # Updating CTE containing DT with two views:
+with cte1 as (select * from (select * from v1, v2) dt1) update cte1 set a=0;
+select * from v1;
+
+--echo # ... Adding where clause inside specification:
+with cte1 as (select * from (select * from v1, v2) dt1 where b>3) update cte1 set a=3;
+select * from t1;
+
+--echo # ... Adding where clause outside and removing from inside:
+with cte1 as (select * from (select * from v1, v2) dt1) update cte1 set a=5 where b<4;
+select * from v1;
+
+--echo # ... Adding where clause to inside and outside:
+with cte1 as (select * from (select * from v1, v2) dt1 where a>3 and c<10)
+update cte1 set a=0 where a>4;
+select * from v1;
+
+--echo # Updating 2nd view:
+with cte1 as (select * from (select * from v1, v2) dt1) update cte1 set c=2;
+select * from v1;
+
+--echo # ... Adding where clause inside specification of CTE:
+with cte1 as (select * from (select * from v1, v2) dt1 where d<10) update cte1 set c=3;
+select * from v2;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from (select * from v1, v2) dt1) update cte1 set c=6 where a>1 and d>=10;
+select * from v2;
+
+--echo # ... Adding where clause inside and outside:
+with cte1 as (select * from (select * from v1, v2) dt1 where a>3 and c<5) 
+update cte1 set c=9 where d>4;
+select * from v2;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # Updating Nested CTE with two views:
+with cte1 as (select * from v1, v2), cte2 as (select * from cte1) 
+update cte2 set a=0;
+select * from v1;
+
+--echo # ... Adding where clause inside specification of cte2:
+with cte1 as (select * from v1, v2), cte2 as (select * from cte1 where b>3)
+update cte2 set a=3;
+select * from v1;
+
+--echo # ... Adding where clause outside and removing from inside:
+with cte1 as (select * from v1, v2), cte2 as (select * from cte1) 
+update cte2 set a=5 where b<4;
+select * from v1;
+
+--echo # ... Adding where clause to inside(cte2) and outside:
+with cte1 as (select * from v1, v2), cte2 as (select * from cte1 where a>3 and c<10)
+update cte2 set a=0 where a>4;
+select * from v1;
+
+--echo # Updating 2nd BT:
+with cte1 as (select * from v1, v2), cte2 as (select * from cte1) 
+update cte2 set c=2;
+select * from v2;
+
+--echo # ... Adding where clause inside specification of cte2:
+with cte1 as (select * from v1, v2), cte2 as (select * from cte1 where d<10)
+update cte2 set c=3;
+select * from v2;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from v1, v2), cte2 as (select * from cte1) 
+update cte2 set c=6 where a>1 and d<10;
+select * from v2;
+
+--echo # ... Adding where inside (cte2) and outside:
+with cte1 as (select * from v1, v2), cte2 as (select * from cte1 where a>3 and c<5)
+update cte2 set c=9 where d>4;
+select * from v2;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # Updating CTE containing a DT(v1) & BT:
+with cte1 as (select * from (select * from v1) dt1) update cte1, t2 set a=0;
+select * from v1;
+
+--echo # ... Adding where clause inside specification of CTE:
+with cte1 as (select * from (select * from v1) dt1 where b>10) update cte1, t2 set b=4;
+select * from v1;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from (select * from v1) dt1 where b>3) update cte1, t2 set a=5 where b>4;
+select * from v1;
+
+--echo # Updating Base Table, Tables used - CTE & base:
+with cte1 as (select * from (select * from v1) dt1) update cte1, t2 set c=1;
+select * from t2;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from (select * from v1) dt1) update cte1, t2 set c=2 where d>10;
+select * from t2;
+
+
+--echo # Reseting base tables:
+delete from t1, t2;
+insert into t1 values (1,2),(33,1),(3,3),(11,12),(8,7);
+insert into t2 values (2,4),(9,9),(5,4),(10,111),(7,10);
+
+
+--echo # Updating Nested CTE (1 view) & View:
+with cte1 as (select * from v1), cte2 as (select * from cte1) update cte2, v2 set a=0;
+select * from v1;
+
+--echo # ... Adding where clause in specification of cte2:
+with cte1 as (select * from v1), cte2 as (select * from cte1 where b>5) 
+update cte2, v2 set a=9;
+select * from v1;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from v1), cte2 as (select * from cte1 where b<5) 
+update cte2, v2 set a=7 where b>1;
+select * from v1;
+
+--echo # Updating BT:
+with cte1 as (select * from v1), cte2 as (select * from cte1) 
+update cte2, v2 set c=1;
+select * from v2;
+
+--echo # ... Adding where clause inside specification of cte2:
+with cte1 as (select * from v1), cte2 as (select * from cte1 where a>4) 
+update cte2, v2 set c=3;
+select * from t2;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from v1), cte2 as (select * from cte1 where a>4) 
+update cte2, v2 set c=3 where d<5;
+select * from v2;
+
+--echo # Switching places of CTE and BT:
+--echo # Updating BT 'v1':
+with cte1 as (select * from v1), cte2 as (select * from cte1 where c>2)
+update v1, cte2 set a=0;
+select * from v1;
+
+--echo # ... Adding where clause inside specification of cte2:
+with cte1 as (select * from v1), cte2 as (select * from cte1 where c>2)
+update v1, cte2 set a=0 where b>2;
+select * from v1;
+
+--echo # Updating CTE:
+with cte1 as (select * from v1), cte2 as (select * from cte1 where c>2)
+update v1, cte2 set c=1;
+select * from v1;
+
+--echo # ... Adding where clause outside:
+with cte1 as (select * from v1), cte2 as (select * from cte1 where c><)
+update v1, cte2 set a=0 where d>4;
+select * from v1;
+
+--echo # Clearing:
+drop view v1, v2;
+drop table t1, t2;

@@ -1,0 +1,160 @@
+# Can't test with embedded server
+-- source include/not_embedded.inc
+
+# Save the initial number of concurrent sessions
+--source include/count_sessions.inc
+
+--echo # Checking privileges of UPDATE queries using Derived Tables
+
+--echo # Initalization of DB, roles, tables
+create database priv_test;
+create user testing@localhost;
+connect (user,localhost,testing,,test);
+connection user;
+
+connection root;
+
+create table priv_test.t1 (a int, b int);
+insert into priv_test.t1 (1,3),(8,3),(11,11);
+
+--echo # Granting privileges
+grant select, update(b), delete on priv_test.t1 to testing@localhost;
+
+connection user;
+--echo # Following queries has a pattern: 
+--echo # Not allowed with & without wild('*') followed by allowed queries.
+
+--echo # Trying to update fields of a DT containing a base table:
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select * from t1) dt1 set a=0;
+update (select * from t1) dt1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select a,b from t1) dt1 set a=0;
+update (select a,b from t1) dt1 set b=0;
+
+--echo # ... Adding conditions to above queries:
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select * from t1 where a>0 and b<10) dt1 set a=0;
+update (select * from t1 where a>0 and b<10) dt1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select a,b from t1 where a>0 and b<10) dt1 set a=0;
+update (select a,b from t1 where a>0 and b<10) dt1 set b=0;
+
+--echo # Testing simple views:
+create view v1 as (select * from t1);
+create view v2 as (select * from t1 where a>0 and b<10);
+select * from v1;
+select * from v2;
+
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select * from v1) dt1 set a=0;
+update (select * from v1) dt1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select a,b from v1) dt1 set a=0;
+update (select a,b from v1) dt1 set b=2;
+
+--echo # ... adding where clauses:
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select * from v1 where a>0 and b<10) dt1 set a=0;
+update (select * from v1 where a>0 and b<10) dt1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select a,b from v1 where a>0 and b<10) dt1 set a=0;
+update (select a,b from v1 where a>0 and b<10) dt1 set b=2;
+
+--echo # Update a DT contain a view having where clause in specification:
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select * from v2) dt1 set a=0;
+update (select * from v2) dt1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select a,b from v2) dt1 set a=0;
+update (select a,b from v2) dt1 set b=2;
+
+--echo # ... adding where clauses:
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select * from v2 where a>1 and b<9) dt1 set a=0;
+update (select * from v2 where a>1 and b<9) dt1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select a,b from v2 where a>1 and b<9) dt1 set a=0;
+update (select a,b from v2 where a>1 and b<9) dt1 set b=2;
+
+--echo # Testing views having a DT in specification:
+create view v3 as (select * from (select * from t1) dt1);
+create view v4 as (select * from (select * from t1 where a>0 and b<10) dt1);
+select * from v3;
+select * from v4;
+
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select * from v3) dt1 set a=0;
+update (select * from v3) dt1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select a,b from v3) dt1 set a=0;
+update (select a,b from v3) dt1 set b=2;
+
+--echo # ... adding where clauses:
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select * from v3 where a>0 and b<10) dt1 set a=0;
+update (select * from v3 where a>0 and b<10) dt1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select a,b from v3 where a>0 and b<10) dt1 set a=0;
+update (select a,b from v3 where a>0 and b<10) dt1 set b=2;
+
+--echo # Above case with where clause in specification of the view:
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select * from v4) dt1 set a=0;
+update (select * from v4) dt1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select a,b from v4) dt1 set a=0;
+update (select a,b from v4) dt1 set b=2;
+
+--echo # ... adding where clauses:
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select * from v4 where a>1 and b<9) dt1 set a=0;
+update (select * from v4 where a>1 and b<9) dt1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select a,b from v4 where a>1 and b<9) dt1 set a=0;
+update (select a,b from v4 where a>1 and b<9) dt1 set b=2;
+drop view v3, v4;
+
+--echo # Testing views with views inside them
+create view v3 as (select * from v1);
+create view v4 as (select * from v2);
+select * from v3;
+select * from v4;
+
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select * from v3) dt1 set a=0;
+update (select * from v3) dt1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select a,b from v3) dt1 set a=0;
+update (select a,b from v3) dt1 set b=2;
+
+--echo # ... adding where clauses:
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select * from v3 where a>0 and b<10) dt1 set a=0;
+update (select * from v3 where a>0 and b<10) dt1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select a,b from v3 where a>0 and b<10) dt1 set a=0;
+update (select a,b from v3 where a>0 and b<10) dt1 set b=2;
+
+--echo # View containg a DT in its specification:
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select * from v4) dt1 set a=0;
+update (select * from v4) dt1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select a,b from v4) dt1 set a=0;
+update (select a,b from v4) dt1 set b=2;
+
+--echo # ... adding where clauses:
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select * from v4 where a>1 and b<9) dt1 set a=0;
+update (select * from v4 where a>1 and b<9) dt1 set b=0;
+--error ER_COLUMNACCESS_DENIED_ERROR
+update (select a,b from v4 where a>1 and b<9) dt1 set a=0;
+update (select a,b from v4 where a>1 and b<9) dt1 set b=2;
+
+--echo # Clearing
+connection root;
+drop view priv_test.v1, priv_test.v2, priv_test.v3, priv_test.v4;
+revoke all privileges on priv_test.t1 from priv_test@localhost;
+drop user testing@localhost;
+drop database priv_test;
